@@ -4,6 +4,7 @@
 int main(int argc, char** argv)
 {
     printf("Pingo");
+    //Patata
     QApplication app(argc, argv);
     ejemplo1 foo;
     foo.show();
