@@ -8,6 +8,7 @@ ejemplo1::ejemplo1(): Ui_Counter()
 	show();
 	connect(button, SIGNAL(clicked()), this, SLOT(doButton()) );
 	connect(timer, &QTimer::timeout, this, &ejemplo1::doCount);
+	connect(button_2, SIGNAL(clicked()), this, SLOT(doReset()) );
 	timer->start(1000);
 }
 
@@ -18,7 +19,7 @@ void ejemplo1::doButton()
 		timer->stop();
 		button->setText("Start");
 	} else {
-		num = 0;
+		//num = 0;
 		timer->start(1000);
 		button->setText("Stop");
 		lcdNumber->display(num);
@@ -28,6 +29,10 @@ void ejemplo1::doButton()
 void ejemplo1::doCount() {
 	qDebug() << "click on count";
 	lcdNumber->display(num++);
+}
+void ejemplo1::doReset() {
+    num = 0;
+    lcdNumber->display(num);
 }
 
 
