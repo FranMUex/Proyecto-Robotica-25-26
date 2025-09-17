@@ -16,9 +16,11 @@ void ejemplo1::doButton()
 	qDebug() << "click on button";
 	if (timer->isActive()) {
 		timer->stop();
+		button->setText("Start");
 	} else {
 		num = 0;
 		timer->start(1000);
+		button->setText("Stop");
 		lcdNumber->display(num);
 	}
 }
