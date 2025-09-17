@@ -20,7 +20,8 @@ class ejemplo1 : public QWidget, public Ui_Counter
 
     private:
         QTimer *timer;
-        int num;
+        int count;
+        int period;
 };
 
 #endif // ejemplo1_H

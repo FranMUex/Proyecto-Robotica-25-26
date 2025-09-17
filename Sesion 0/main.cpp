@@ -1,10 +1,10 @@
 #include <QtWidgets>
 #include "ejemplo1.h"
+#include<iostream>
 
 int main(int argc, char** argv)
 {
-    printf("Pingo");
-    //Patata
+    std::cerr << "Pingocout";    //Patata
     QApplication app(argc, argv);
     ejemplo1 foo;
     foo.show();

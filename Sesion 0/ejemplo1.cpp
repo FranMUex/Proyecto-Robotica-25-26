@@ -2,14 +2,16 @@
 
 ejemplo1::ejemplo1(): Ui_Counter()
 {
-	num = 0;
+	count = 0;
+	period = 1000;
 	timer = new QTimer(this);
 	setupUi(this);
 	show();
 	connect(button, SIGNAL(clicked()), this, SLOT(doButton()) );
 	connect(timer, &QTimer::timeout, this, &ejemplo1::doCount);
 	connect(button_2, SIGNAL(clicked()), this, SLOT(doReset()) );
-	timer->start(1000);
+	connect(horizontalSlider, SIGNAL(valueChanged(int)), this, SLOT(changePeriod()) );
+	timer->start(period);
 }
 
 void ejemplo1::doButton()
@@ -19,20 +21,27 @@ void ejemplo1::doButton()
 		timer->stop();
 		button->setText("Start");
 	} else {
-		//num = 0;
-		timer->start(1000);
+		//count = 0;
+		timer->start(period);
 		button->setText("Stop");
-		lcdNumber->display(num);
+		lcdNumber->display(count);
 	}
 }
 
 void ejemplo1::doCount() {
 	qDebug() << "click on count";
-	lcdNumber->display(num++);
+	lcdNumber->display(count++);
 }
 void ejemplo1::doReset() {
-    num = 0;
-    lcdNumber->display(num);
+    count = 0;
+    lcdNumber->display(count);
+}
+
+void ejemplo1::changePeriod()
+{
+	period = horizontalSlider->value();
+	lcdNumber_2->display(period);
+	timer->start(period);
 }
 
 
