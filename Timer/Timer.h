@@ -7,6 +7,11 @@
 #include <cstdio>
 #include <iostream>
 #include <ctime>
+#include <concepts>
+#include <cstddef>
+//Concept to ensure the parameter is callable with no arguments
+//template<typename T>
+//concept Callable = std::invocable<T>;
 
 class Timer
 {
@@ -15,11 +20,11 @@ public:
     template <class T>
     void connect(T f)
     {
-        std::thread([=]()
+        std::thread([this, f = std::move(f)]()
         {
             while(true)
             {
-                  if(go.load())
+                  if(go)
                       std::invoke(f);
                   std::this_thread::sleep_for(std::chrono::milliseconds(period.load()));
             }

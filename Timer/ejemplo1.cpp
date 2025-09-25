@@ -19,4 +19,5 @@ void ejemplo1::doButton()
 void ejemplo1::increase_counter()
 {
 	counter++;
+	std::cout << counter << std::endl;
 }
