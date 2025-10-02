@@ -17,6 +17,9 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
+#include <vector>
+
+constexpr float umbral = 300.0;
 
 SpecificWorker::SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check) : GenericWorker(configLoader, tprx)
 {
@@ -67,6 +70,16 @@ SpecificWorker::~SpecificWorker()
 void SpecificWorker::initialize()
 {
     std::cout << "initialize worker" << std::endl;
+	/*
+	this->dimensions = QRectF(-6000, -3000, 12000, 6000);
+	viewer = new AbstractGraphicViewer(this->frame, this->dimensions);
+	this->resize(900,450);
+	viewer->show();
+	const auto rob = viewer->add_robot(ROBOT_LENGTH, ROBOT_LENGTH, 0, 190, QColor("Blue"));
+	robot_polygon = std::get<0>(rob);
+
+	connect(viewer, &AbstractGraphicViewer::new_mouse_coordinates, this, &SpecificWorker::new_target_slot);
+	*/
 
     //initializeCODE
 
@@ -80,20 +93,41 @@ void SpecificWorker::initialize()
 
 void SpecificWorker::compute()
 {
-    std::cout << "Compute worker" << std::endl;
-	//computeCODE
-	//try
-	//{
-	//  camera_proxy->getYImage(0,img, cState, bState);
-    //    if (img.empty())
-    //        emit goToEmergency()
-	//  memcpy(image_gray.data, &img[0], m_width*m_height*sizeof(uchar));
-	//  searchTags(image_gray);
-	//}
-	//catch(const Ice::Exception &e)
-	//{
-	//  std::cout << "Error reading from Camera" << e << std::endl;
-	//}
+	try
+	{
+		auto data = lidar3d_proxy->getLidarDataWithThreshold2d("helios", 5000, 1);
+		qInfo() << data.points.size();
+
+		std::vector<RoboCompLidar3D::TPoint> puntos;
+		puntos.push_back(data.points[0]);
+		for (int i = 0; i < data.points.size(); i++) {
+			if ()
+		}
+		float first = phis[0];
+
+		for (float f : phis)
+			if ( f != first )
+				first = f;
+
+		printf("min: %f\n", min);
+
+
+	}
+	catch(const Ice::Exception &e) {
+		std::cout << e << " Conexión con Laser\n";
+
+	}
+
+	// filtrar lidar
+	// detectar un mínimo en lidar filtrado
+	// decidimos si return o parar y girar en base a la lectura reciente del lidar
+
+	try {
+		omnirobot_proxy->setSpeedBase(0,0,0);
+	}
+	catch(const Ice::Exception &e) {
+		std::cout << e << " Conexión con Laser\n";
+	}
 }
 
 
