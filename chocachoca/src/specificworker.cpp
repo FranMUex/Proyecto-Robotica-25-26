@@ -18,6 +18,7 @@
  */
 #include "specificworker.h"
 #include <vector>
+#include <cppitertools/groupby.hpp>
 
 constexpr float umbral = 300.0;
 
@@ -98,18 +99,19 @@ void SpecificWorker::compute()
 		auto data = lidar3d_proxy->getLidarDataWithThreshold2d("helios", 5000, 1);
 		qInfo() << data.points.size();
 
-		std::vector<RoboCompLidar3D::TPoint> puntos;
-		puntos.push_back(data.points[0]);
-		for (int i = 0; i < data.points.size(); i++) {
-			if ()
+		RoboCompLidar3D::TPoints salida;
+		// Agrupar por phi y obtener el mínimo de r por grupo en una línea, usando push_back para almacenar en el vector
+		for (auto&& group : iter::groupby(data.points, [](const auto& p)
+		{
+			float factor = std::pow(10, 2);  // Potencia de 10 para mover el punto decimal
+			return std::round(p.phi * factor) / factor;  // Redondear y devolver con la cantidad deseada de decimales
+		})) {
+			auto min_r = *std::min_element(group.second.begin(), group.second.end(),
+				[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
+			salida.emplace_back(min_r.r);
 		}
-		float first = phis[0];
 
-		for (float f : phis)
-			if ( f != first )
-				first = f;
-
-		printf("min: %f\n", min);
+		qInfo() <<"##############>" << salida.size();
 
 
 	}
