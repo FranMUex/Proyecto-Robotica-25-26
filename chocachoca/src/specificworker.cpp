@@ -67,11 +67,40 @@ SpecificWorker::~SpecificWorker()
 	std::cout << "Destroying SpecificWorker" << std::endl;
 }
 
+void SpecificWorker::draw_lidar(const auto &points, QGraphicsScene* scene)
+{
+	static std::vector<QGraphicsItem*> draw_points;
+	for (const auto &p : draw_points)
+	{
+		scene->removeItem(p);
+		delete p;
+	}
+	draw_points.clear();
+
+	const QColor color("LightGreen");
+	const QPen pen(color, 10);
+	//const QBrush brush(color, Qt::SolidPattern);
+	for (const auto &p : points)
+	{
+		const auto dp = scene->addRect(-25, -25, 50, 50, pen);
+		dp->setPos(p.x, p.y);
+		draw_points.push_back(dp);   // add to the list of points to be deleted next time
+	}
+}
+
+
 
 void SpecificWorker::initialize()
 {
-    std::cout << "initialize worker" << std::endl;
-	/*
+
+    //initializeCODE
+
+    /////////GET PARAMS, OPEND DEVICES....////////
+    //int period = configLoader.get<int>("Period.Compute") //NOTE: If you want get period of compute use getPeriod("compute")
+    //std::string device = configLoader.get<std::string>("Device.name")
+
+	std::cout << "initialize worker" << std::endl;
+
 	this->dimensions = QRectF(-6000, -3000, 12000, 6000);
 	viewer = new AbstractGraphicViewer(this->frame, this->dimensions);
 	this->resize(900,450);
@@ -80,13 +109,6 @@ void SpecificWorker::initialize()
 	robot_polygon = std::get<0>(rob);
 
 	connect(viewer, &AbstractGraphicViewer::new_mouse_coordinates, this, &SpecificWorker::new_target_slot);
-	*/
-
-    //initializeCODE
-
-    /////////GET PARAMS, OPEND DEVICES....////////
-    //int period = configLoader.get<int>("Period.Compute") //NOTE: If you want get period of compute use getPeriod("compute")
-    //std::string device = configLoader.get<std::string>("Device.name") 
 
 }
 
@@ -97,7 +119,6 @@ void SpecificWorker::compute()
 	try
 	{
 		auto data = lidar3d_proxy->getLidarDataWithThreshold2d("helios", 5000, 1);
-		qInfo() << data.points.size();
 
 		RoboCompLidar3D::TPoints salida;
 		// Agrupar por phi y obtener el mínimo de r por grupo en una línea, usando push_back para almacenar en el vector
@@ -111,7 +132,10 @@ void SpecificWorker::compute()
 			salida.emplace_back(min_r.r);
 		}
 
-		qInfo() <<"##############>" << salida.size();
+		//qInfo() << data.points.size();
+		//qInfo() <<"##############>" << salida.size();
+		draw_lidar(salida, &viewer->scene);
+
 
 
 	}
@@ -130,6 +154,25 @@ void SpecificWorker::compute()
 	catch(const Ice::Exception &e) {
 		std::cout << e << " Conexión con Laser\n";
 	}
+/*
+
+	std::tuple<State, float, float> result;	//State -> enum class
+	switch(state)
+	{
+	case: IDLE
+	case: FORWARD
+		result = FORWARD_method(ldata);
+	case: TURN
+	case: FOLLOW_WALL
+	case: SPIRAL
+	}
+	state = std::get<State>(result);*/
+
+}
+
+void SpecificWorker::new_target_slot(QPointF coso)
+{
+	std::cout << coso.x() << " " << coso.y() << std::endl;
 }
 
 
