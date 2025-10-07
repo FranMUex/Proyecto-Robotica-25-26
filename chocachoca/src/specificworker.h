@@ -51,6 +51,8 @@ public:
 
 	void draw_lidar(const auto &points, QGraphicsScene* scene);
 
+	RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
+
 	/**
      * \brief Destructor for SpecificWorker.
      */
