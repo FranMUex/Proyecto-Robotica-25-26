@@ -1,9 +1,18 @@
 #! /usr/bin/bash
 
-rcnode
+bash ~/robocomp/tools/rcnode/rcnode.sh &
+
+cd /usr/local/bin
+
+if ! test -f robocomp; then
+  sudo ln -s ~/software/pip_env/bin/robocomp
+  sudo ln -s ~/software/pip_env/bin/robocompdsl
+fi
 
 webots &
 disown
+
+sleep 3
 
 cd ~/robocomp/components/webots-bridge/
 
