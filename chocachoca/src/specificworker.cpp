@@ -19,6 +19,7 @@
 #include "specificworker.h"
 #include <vector>
 #include <cppitertools/groupby.hpp>
+#include <cppitertools/range.hpp>
 
 constexpr float umbral = 300.0;
 
@@ -93,29 +94,81 @@ void SpecificWorker::initialize()
 
 }
 
+std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
+{
+	while (true)
+	{
+		//IMPLEMENTAR EL IF PARA QUE PARE LLEGADO A UN TOPE
+		omnirobot_proxy->setSpeedBase(0,100,0);
+
+	}
+}
+RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points)
+{
+	RoboCompLidar3D::TPoints puntos;
+	for (auto i = 0; i < points.size(); ++i)
+	{
+		if (points[i].phi < (std::numbers::pi/2) && points[i].phi > (-std::numbers::pi/2))
+		{
+			puntos.push_back(points[i]);
+		}
+	}
+	return puntos;
+}
+
 
 void SpecificWorker::compute()
 {
+	RoboCompLidar3D::TPoints filter_data;
 	try
 	{
 		const auto data = lidar3d_proxy->getLidarDataWithThreshold2d("helios", 12000, 1);
 		if (data.points.empty()) {qWarning() << "No points received"; return;}
 
-		//auto filter_data = filter_min_distance(data.points);
+		filter_data = filter_min_distance(data.points);
 
-		qInfo() << data.points.size();
-		qInfo() <<"##############>" << data.points.size();
+		//qInfo() << data.points.size();
+//qInfo() <<"##############>" << data.points.size();
 		draw_lidar(data.points, &viewer->scene);
+	}
+	catch(const Ice::Exception &e) {std::cout << e << " Conexión con Laser\n";}
+
+	std::ranges::sort(filter_data, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	for (auto i : iter::range(1))
+		qInfo() << filter_data[i].r;
+	qInfo() << "----------------------------------";
+
+	RoboCompLidar3D::TPoints puntos = filter_ahead(filter_data);
+	qInfo() << "DELANTE";
+	std::ranges::sort(filter_data, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	for (auto i : iter::range(1))
+		qInfo() << filter_data[i].r;
+	qInfo() << "----------------------------------";
+
+	State state = FORWARD;
+	std::tuple<State, float, float> result;
+	switch (state)
+{
+		case IDLE:
+
+			break;
+		case FORWARD:
+
+			result = fwd(filter_data);
+			break;
+		case TURN:
+
+			break;
+		case FOLLOW_WALL:
+
+			break;
+		case SPIRAL:
+
+			break;
 
 	}
-	catch(const Ice::Exception &e) {
-		std::cout << e << " Conexión con Laser\n";
+	state = std::get<State>(result);
 
-	}
-
-	// filtrar lidar
-	// detectar un mínimo en lidar filtrado
-	// decidimos si return o parar y girar en base a la lectura reciente del lidar
 
 	/*try {
 		omnirobot_proxy->setSpeedBase(0,0,0);
@@ -123,8 +176,6 @@ void SpecificWorker::compute()
 	catch(const Ice::Exception &e) {
 		std::cout << e << " Conexión con Laser\n";
 	}*/
-
-	printf("Compute\n");
 
 }
 
@@ -138,9 +189,9 @@ RoboCompLidar3D::TPoints SpecificWorker::filter_min_distance(RoboCompLidar3D::TP
 		float factor = std::pow(10, 2);  // Potencia de 10 para mover el punto decimal
 		return std::round(p.phi * factor) / factor;  // Redondear y devolver con la cantidad deseada de decimales
 	})) {
-		auto min_r = *std::min_element(group.second.begin(), group.second.end(),
+		auto min_r = std::min_element(group.second.begin(), group.second.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
-		salida.emplace_back(min_r.r);
+		salida.emplace_back(*min_r);
 	}
 
 	return salida;

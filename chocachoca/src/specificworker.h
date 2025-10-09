@@ -34,6 +34,8 @@
 #include <genericworker.h>
 #include <abstract_graphic_viewer/abstract_graphic_viewer.h>
 
+
+enum State { IDLE, FORWARD, TURN, FOLLOW_WALL, SPIRAL};
 /**
  * \brief Class SpecificWorker implements the core functionality of the component.
  */
@@ -41,6 +43,9 @@ class SpecificWorker : public GenericWorker
 {
 Q_OBJECT
 public:
+
+
+
     /**
      * \brief Constructor for SpecificWorker.
      * \param configLoader Configuration loader for the component.
@@ -53,6 +58,9 @@ public:
 
 	RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
 
+	RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points);
+
+	std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
 	/**
      * \brief Destructor for SpecificWorker.
      */
