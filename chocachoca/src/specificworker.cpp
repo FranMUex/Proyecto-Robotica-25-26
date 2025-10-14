@@ -96,19 +96,67 @@ void SpecificWorker::initialize()
 
 std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
 {
-	while (true)
-	{
-		//IMPLEMENTAR EL IF PARA QUE PARE LLEGADO A UN TOPE
-		omnirobot_proxy->setSpeedBase(0,100,0);
 
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (puntos[0].r<770)
+	{
+		return{TURN, 0.0, 1.0};
 	}
+		return{FORWARD, 1000.0, 0.0};
 }
-RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points)
+
+std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
+{
+	RoboCompLidar3D::TPoints pD=filter_ahead(puntos,1);
+	RoboCompLidar3D::TPoints pI=filter_ahead(puntos,2);
+	std::ranges::sort(pD, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	std::ranges::sort(pI, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (pD[0].r<pI[0].r)
+	{
+		return{FOLLOW_WALL, 0.0, 1.0};
+	}
+	return{FOLLOW_WALL, 0.0, -1.0};
+}
+
+std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
+{
+
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (puntos[0].r<770)
+	{
+		return{TURN, 0.0, 1.0};
+	}
+	return{FORWARD, 1000.0, -1.0};
+}
+
+
+RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points,int n)
 {
 	RoboCompLidar3D::TPoints puntos;
+	float inicio,fin=0;
+
+	switch(n)
+	{
+		case 0:
+			inicio=std::numbers::pi/2;
+			fin=-std::numbers::pi/2;
+		    break;
+		case 1:
+			inicio=-std::numbers::pi/4;
+			fin=-std::numbers::pi/2;
+		   break;
+		case 2:
+			inicio=std::numbers::pi/2;
+			fin=std::numbers::pi/4;
+		   break;
+		default:
+			inicio=std::numbers::pi/2;
+			fin=-std::numbers::pi/2;
+	}
 	for (auto i = 0; i < points.size(); ++i)
 	{
-		if (points[i].phi < (std::numbers::pi/2) && points[i].phi > (-std::numbers::pi/2))
+		if (points[i].phi < inicio && points[i].phi > fin)
 		{
 			puntos.push_back(points[i]);
 		}
@@ -129,7 +177,7 @@ void SpecificWorker::compute()
 
 		//qInfo() << data.points.size();
 //qInfo() <<"##############>" << data.points.size();
-		draw_lidar(data.points, &viewer->scene);
+		draw_lidar(filter_data, &viewer->scene);
 	}
 	catch(const Ice::Exception &e) {std::cout << e << " Conexión con Laser\n";}
 
@@ -138,11 +186,11 @@ void SpecificWorker::compute()
 		qInfo() << filter_data[i].r;
 	qInfo() << "----------------------------------";
 
-	RoboCompLidar3D::TPoints puntos = filter_ahead(filter_data);
+	RoboCompLidar3D::TPoints puntos = filter_ahead(filter_data,0);
 	qInfo() << "DELANTE";
-	std::ranges::sort(filter_data, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	std::ranges::sort(puntos, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
 	for (auto i : iter::range(1))
-		qInfo() << filter_data[i].r;
+		qInfo() << puntos[i].r;
 	qInfo() << "----------------------------------";
 
 	State state = FORWARD;
@@ -154,10 +202,10 @@ void SpecificWorker::compute()
 			break;
 		case FORWARD:
 
-			result = fwd(filter_data);
+			result = fwd(puntos);
 			break;
 		case TURN:
-
+			result = turn(filter_data);
 			break;
 		case FOLLOW_WALL:
 
@@ -170,12 +218,12 @@ void SpecificWorker::compute()
 	state = std::get<State>(result);
 
 
-	/*try {
-		omnirobot_proxy->setSpeedBase(0,0,0);
+	try {
+		omnirobot_proxy->setSpeedBase(0,std::get<1>(result),std::get<2>(result));
 	}
 	catch(const Ice::Exception &e) {
 		std::cout << e << " Conexión con Laser\n";
-	}*/
+	}
 
 }
 

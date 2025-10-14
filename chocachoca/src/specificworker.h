@@ -58,9 +58,11 @@ public:
 
 	RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
 
-	RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points);
+	RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points,int lado);//0 adelante, 1 drcha, 2 izq
 
 	std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
+	std::tuple<State, float, float> turn(RoboCompLidar3D::TPoints puntos);
+	std::tuple<State, float, float> wall(RoboCompLidar3D::TPoints puntos);
 	/**
      * \brief Destructor for SpecificWorker.
      */
