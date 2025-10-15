@@ -69,9 +69,6 @@ SpecificWorker::~SpecificWorker()
 }
 
 
-
-
-
 void SpecificWorker::initialize()
 {
 
@@ -92,76 +89,6 @@ void SpecificWorker::initialize()
 
 	connect(viewer, &AbstractGraphicViewer::new_mouse_coordinates, this, &SpecificWorker::new_target_slot);
 
-}
-
-std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
-{
-
-	//omnirobot_proxy->setSpeedBase(0,400,0);
-	if (puntos[0].r<770)
-	{
-		return{TURN, 0.0, 1.0};
-	}
-		return{FORWARD, 1000.0, 0.0};
-}
-
-std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
-{
-	RoboCompLidar3D::TPoints pD=filter_ahead(puntos,1);
-	RoboCompLidar3D::TPoints pI=filter_ahead(puntos,2);
-	std::ranges::sort(pD, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
-	std::ranges::sort(pI, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
-	//omnirobot_proxy->setSpeedBase(0,400,0);
-	if (pD[0].r<pI[0].r)
-	{
-		return{FOLLOW_WALL, 0.0, 1.0};
-	}
-	return{FOLLOW_WALL, 0.0, -1.0};
-}
-
-std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
-{
-
-	//omnirobot_proxy->setSpeedBase(0,400,0);
-	if (puntos[0].r<770)
-	{
-		return{TURN, 0.0, 1.0};
-	}
-	return{FORWARD, 1000.0, -1.0};
-}
-
-
-RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points,int n)
-{
-	RoboCompLidar3D::TPoints puntos;
-	float inicio,fin=0;
-
-	switch(n)
-	{
-		case 0:
-			inicio=std::numbers::pi/2;
-			fin=-std::numbers::pi/2;
-		    break;
-		case 1:
-			inicio=-std::numbers::pi/4;
-			fin=-std::numbers::pi/2;
-		   break;
-		case 2:
-			inicio=std::numbers::pi/2;
-			fin=std::numbers::pi/4;
-		   break;
-		default:
-			inicio=std::numbers::pi/2;
-			fin=-std::numbers::pi/2;
-	}
-	for (auto i = 0; i < points.size(); ++i)
-	{
-		if (points[i].phi < inicio && points[i].phi > fin)
-		{
-			puntos.push_back(points[i]);
-		}
-	}
-	return puntos;
 }
 
 
@@ -227,7 +154,78 @@ void SpecificWorker::compute()
 
 }
 
-///////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
+{
+
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (puntos[0].r<770)
+	{
+		return{TURN, 0.0, 1.0};
+	}
+	return{FORWARD, 1000.0, 0.0};
+}
+
+std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
+{
+	RoboCompLidar3D::TPoints pD=filter_ahead(puntos,1);
+	RoboCompLidar3D::TPoints pI=filter_ahead(puntos,2);
+	std::ranges::sort(pD, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	std::ranges::sort(pI, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (pD[0].r<pI[0].r)
+	{
+		return{FOLLOW_WALL, 0.0, 1.0};
+	}
+	return{FOLLOW_WALL, 0.0, -1.0};
+}
+
+std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
+{
+
+	//omnirobot_proxy->setSpeedBase(0,400,0);
+	if (puntos[0].r<770)
+	{
+		return{TURN, 0.0, 1.0};
+	}
+	return{FORWARD, 1000.0, -1.0};
+}
+
+
+RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points,int n)
+{
+	RoboCompLidar3D::TPoints puntos;
+	float inicio,fin=0;
+
+	switch(n)
+	{
+	case 0:
+		inicio=std::numbers::pi/2;
+		fin=-std::numbers::pi/2;
+		break;
+	case 1:
+		inicio=-std::numbers::pi/4;
+		fin=-std::numbers::pi/2;
+		break;
+	case 2:
+		inicio=std::numbers::pi/2;
+		fin=std::numbers::pi/4;
+		break;
+	default:
+		inicio=std::numbers::pi/2;
+		fin=-std::numbers::pi/2;
+	}
+	for (auto i = 0; i < points.size(); ++i)
+	{
+		if (points[i].phi < inicio && points[i].phi > fin)
+		{
+			puntos.push_back(points[i]);
+		}
+	}
+	return puntos;
+}
+
 RoboCompLidar3D::TPoints SpecificWorker::filter_min_distance(RoboCompLidar3D::TPoints points)
 {
 	RoboCompLidar3D::TPoints salida;
