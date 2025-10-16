@@ -22,7 +22,7 @@
 #include <cppitertools/range.hpp>
 
 constexpr float umbral = 300.0;
-
+State state = FORWARD;
 SpecificWorker::SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check) : GenericWorker(configLoader, tprx)
 {
 	this->startup_check_flag = startup_check;
@@ -114,13 +114,13 @@ void SpecificWorker::compute()
 	qInfo() << "----------------------------------";
 
 	RoboCompLidar3D::TPoints puntos = filter_ahead(filter_data,0);
-	qInfo() << "DELANTE";
+	//qInfo() << "DELANTE";
 	std::ranges::sort(puntos, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
 	for (auto i : iter::range(1))
 		qInfo() << puntos[i].r;
 	qInfo() << "----------------------------------";
 
-	State state = FORWARD;
+
 	std::tuple<State, float, float> result;
 	switch (state)
 {
@@ -132,10 +132,10 @@ void SpecificWorker::compute()
 			result = fwd(puntos);
 			break;
 		case TURN:
-			result = turn(filter_data);
+			result = turn(puntos);
 			break;
 		case FOLLOW_WALL:
-
+			result = wall(puntos);
 			break;
 		case SPIRAL:
 
@@ -160,7 +160,7 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 {
 
 	//omnirobot_proxy->setSpeedBase(0,400,0);
-	if (puntos[0].r<770)
+	if (puntos[0].r<450)
 	{
 		return{TURN, 0.0, 1.0};
 	}
@@ -169,7 +169,7 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 
 std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
 {
-	RoboCompLidar3D::TPoints pD=filter_ahead(puntos,1);
+	/*RoboCompLidar3D::TPoints pD=filter_ahead(puntos,1);
 	RoboCompLidar3D::TPoints pI=filter_ahead(puntos,2);
 	std::ranges::sort(pD, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
 	std::ranges::sort(pI, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
@@ -178,18 +178,40 @@ std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints pu
 	{
 		return{FOLLOW_WALL, 0.0, 1.0};
 	}
-	return{FOLLOW_WALL, 0.0, -1.0};
+	return{FOLLOW_WALL, 0.0, -1.0};*/
+
+	if (puntos[0].phi >= 0)
+	{
+		qInfo() << "TURN a IZ";
+
+		return{FOLLOW_WALL, 0.0, -1.0};
+	}
+	qInfo() << "TURN a DER";
+
+	return{FOLLOW_WALL, 0.0, 1.0};
+
+
 }
 
 std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
 {
+	RoboCompLidar3D::TPoints pC=filter_ahead(puntos,0);
+	std::ranges::sort(pC, [](RoboCompLidar3D::TPoint &a, RoboCompLidar3D::TPoint &b){return a.r < b.r;});
 
-	//omnirobot_proxy->setSpeedBase(0,400,0);
-	if (puntos[0].r<770)
+	if (puntos[0].r > 450)
 	{
-		return{TURN, 0.0, 1.0};
+		qInfo() << "WALL a FORWARD";
+		return {FORWARD, 1000.0, 0.0};
 	}
-	return{FORWARD, 1000.0, -1.0};
+
+	if (puntos[0].phi<0)
+	{
+		qInfo() << "WALL a IZ";
+		return{FOLLOW_WALL, 0.0, 0.1};
+	}
+	qInfo() << "WALL a DER";
+
+		return{FOLLOW_WALL, 0.0, -0.1};
 }
 
 
