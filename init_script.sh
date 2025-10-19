@@ -20,7 +20,7 @@ gnome-terminal --tab --execute bash -c "bin/Webots2Robocomp etc/config ; bash"
 
 cd ~/robocomp/components/robocomp-robolab/components/hardware/laser/lidar3D/
 
-gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_helios_webots ; bash"
+gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_pearl_webots ; bash"
 
 cd ~/robocomp/components/robocomp-robolab/components/hardware/external_control/joystickpublish/
 

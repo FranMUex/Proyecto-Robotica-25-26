@@ -33,6 +33,7 @@
 
 #include <genericworker.h>
 #include <abstract_graphic_viewer/abstract_graphic_viewer.h>
+#include <expected>
 
 
 enum State { IDLE, FORWARD, TURN, FOLLOW_WALL, SPIRAL};
@@ -70,8 +71,6 @@ public:
 
 
 public slots:
-	void new_target_slot(QPointF coso);
-
 	/**
 	 * \brief Initializes the worker one time.
 	 */
