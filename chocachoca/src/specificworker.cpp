@@ -20,12 +20,15 @@
 #include <vector>
 #include <cppitertools/groupby.hpp>
 #include <cppitertools/range.hpp>
+#include <time.h>
 
-constexpr float umbral = 300.0;
-State state = FORWARD;
+State state = SPIRAL;
 
 bool fol_wall = false;
 bool derecha = false;
+
+float spir_rot = 0.6;
+float spir_speed = 1000.0;
 
 SpecificWorker::SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check) : GenericWorker(configLoader, tprx)
 {
@@ -106,7 +109,6 @@ void SpecificWorker::compute()
 		draw_lidar(filter_data, &viewer->scene);
 	}
 	catch(const Ice::Exception &e) {std::cout << e << " Conexión con Laser\n";}
-
 	std::tuple<State, float, float> result;
 	switch (state)
 {
@@ -127,7 +129,7 @@ void SpecificWorker::compute()
 			result = wall(filter_data);
 			break;
 		case SPIRAL:
-
+			result = spiral(filter_data);
 			break;
 
 	}
@@ -150,14 +152,19 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 	auto pC = filter_ahead(puntos, 0);
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
+	auto min = std::min_element(puntos.begin(), puntos.end(),
+			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
+
+	srand(time(NULL));
 
 	if (min_C->r<550)
 	{
-		derecha = min_C->phi >= 0;
+		derecha = min_C->phi >= 0 || (min->r < 550 && min->phi >= 0);
+
 		if (derecha)
-			return {TURN, 0.0, -1.0};
-		return {TURN, 0.0, 1.0};
+			return {FOLLOW_WALL, 0.0, -1.0};
+		return {FOLLOW_WALL, 0.0, 1.0};
 	}
 
 
@@ -166,25 +173,68 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 
 std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
 {
+
+	if (derecha)
+		return{FORWARD, 0.0, -1.0};
+	return {FORWARD, 0.0, 1.0};
+
+}
+
+std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
+{
 	auto pC = filter_ahead(puntos, 0);
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 	auto min = std::min_element(puntos.begin(), puntos.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
-	if (min->r >550 || min_C->r > 550)
-		return {FORWARD, 0.0, 0.0};
+	if (min->r > 550 || min_C->r > 650)
+	{
+		srand(time(NULL));
+		int rand_num = rand() % 4;
+
+		switch (rand_num)
+		{
+		case 1:
+			return {FORWARD, 0.0, 0.0};
+			break;
+		case 2:
+			return {FOLLOW_WALL, 0.0, 0.0};
+			break;
+		case 3:
+			return {SPIRAL, 0.0, 0.0};
+		}
+
+
+	}
 
 	if (derecha)
-		return {TURN, 0.0, -0.3};
-	return {TURN, 0.0, 0.3};
-
+		return {FOLLOW_WALL, 0.0, -1.0};
+	return {FOLLOW_WALL, 0.0, 1.0};
 }
 
-std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
+std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
 {
-	return {FOLLOW_WALL, 0.0, 0.0};
+	auto pC = filter_ahead(puntos, 0);
+	auto min_C = std::min_element(pC.begin(), pC.end(),
+			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
+
+	int sign = derecha ? -1 : 1;
+
+	if (min_C->r < 550)
+		return {FORWARD, 0.0, 0.0};
+
+	if (spir_rot < 0.001)
+	{
+		spir_rot = 1.0;
+		return {FORWARD, 0.0, 0.0};
+	}
+
+	spir_rot -= 0.001 * sign;
+
+	return {SPIRAL, spir_speed, spir_rot * sign};
 }
+
 
 RoboCompLidar3D::TPoints SpecificWorker::filter_ahead(RoboCompLidar3D::TPoints points,int n)
 {

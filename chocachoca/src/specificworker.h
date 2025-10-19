@@ -64,6 +64,8 @@ public:
 	std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
 	std::tuple<State, float, float> turn(RoboCompLidar3D::TPoints puntos);
 	std::tuple<State, float, float> wall(RoboCompLidar3D::TPoints puntos);
+	std::tuple<State, float, float> spiral(RoboCompLidar3D::TPoints puntos);
+
 	/**
      * \brief Destructor for SpecificWorker.
      */
