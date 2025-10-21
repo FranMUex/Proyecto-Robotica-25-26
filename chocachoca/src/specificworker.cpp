@@ -151,6 +151,8 @@ void SpecificWorker::compute()
 std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
+	if(pC.empty())
+		return {TURN, 0.0, 1.0};
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 	auto min = std::min_element(puntos.begin(), puntos.end(),
@@ -161,8 +163,8 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 		derecha = min_C->phi >= 0 || (min->r < 550 && min->phi >= 0);
 
 		if (derecha)
-			return {FOLLOW_WALL, 0.0, -1.0};
-		return {FOLLOW_WALL, 0.0, 1.0};
+			return {TURN, 0.0, 0.0};
+		return {TURN, 0.0, 0.0};
 	}
 
 
@@ -171,10 +173,32 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 
 std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
 {
+	auto pC = filter_ahead(puntos, 0);
+	if(pC.empty())
+		return {TURN, 0.0, 1.0};
+	auto min_C = std::min_element(pC.begin(), pC.end(),
+			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
-	if (derecha)
-		return{FORWARD, 0.0, -1.0};
-	return {FORWARD, 0.0, 1.0};
+	if (min_C->r<550)
+	{
+		if (derecha)
+			return{TURN, 0.0, -1.0};
+		return {TURN, 0.0, 1.0};
+	}
+
+	srand(time(NULL));
+	int rand_num = rand() % 3;
+
+	switch (rand_num)
+	{
+	case 0:
+		return {SPIRAL, 0.0, 0.0};
+	case 1:
+		return {FORWARD, 0.0, 0.0};
+	case 2:
+		return {FOLLOW_WALL, 0.0, 0.0};
+
+	}
 
 }
 
@@ -188,22 +212,7 @@ std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints pu
 
 	if (min->r > 550 || min_C->r > 650)
 	{
-		srand(time(NULL));
-		int rand_num = rand() % 4;
-
-		switch (rand_num)
-		{
-		case 0:
-			return {TURN, 0.0, 0.0};
-		case 1:
 			return {FORWARD, 0.0, 0.0};
-		case 2:
-			//return {FOLLOW_WALL, 0.0, 0.0};
-		case 3:
-			return {SPIRAL, 0.0, 0.0};
-		}
-
-
 	}
 
 	if (derecha)
@@ -214,6 +223,9 @@ std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints pu
 std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
+	if(pC.empty())
+		return {TURN, 0.0, 1.0};
+
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
@@ -232,7 +244,7 @@ std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints 
 		derecha = !derecha;
 		return {SPIRAL, 0.0, 0.0};
 	}
-	spir_rot -= 0.005;
+	spir_rot -= 0.007;
 
 	return {SPIRAL, spir_speed, spir_rot * sign};
 }
