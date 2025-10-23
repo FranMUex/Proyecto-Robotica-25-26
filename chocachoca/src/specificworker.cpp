@@ -158,12 +158,10 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 	auto min = std::min_element(puntos.begin(), puntos.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
-	if (min_C->r<550)
+	if (min_C->r<650)
 	{
-		derecha = min_C->phi >= 0 || (min->r < 550 && min->phi >= 0);
+		derecha = min_C->phi >= 0 || (min->r < 650 && min->phi >= 0);
 
-		if (derecha)
-			return {TURN, 0.0, 0.0};
 		return {TURN, 0.0, 0.0};
 	}
 
@@ -179,7 +177,7 @@ std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints pu
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
-	if (min_C->r<550)
+	if (min_C->r<650)
 	{
 		if (derecha)
 			return{TURN, 0.0, -1.0};
@@ -210,14 +208,14 @@ std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints pu
 	auto min = std::min_element(puntos.begin(), puntos.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
-	if (min->r > 550 || min_C->r > 650)
+	if (min->r > 650 || min_C->r > 700)
 	{
 			return {FORWARD, 0.0, 0.0};
 	}
 
 	if (derecha)
-		return {FOLLOW_WALL, 0.0, -1.0};
-	return {FOLLOW_WALL, 0.0, 1.0};
+		return {FOLLOW_WALL, 0.0, -0.5};
+	return {FOLLOW_WALL, 0.0, 0.5};
 }
 
 std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
@@ -232,7 +230,7 @@ std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints 
 	int sign = derecha ? -1 : 1;
 	qInfo() << "Velocidad rotacion: " << spir_rot;
 
-	if (min_C->r < 550)
+	if (min_C->r < 650)
 	{
 		spir_rot = 1.0;
 		return {FORWARD, 0.0, 0.0};
