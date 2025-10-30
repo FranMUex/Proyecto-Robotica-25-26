@@ -22,13 +22,8 @@
 #include <cppitertools/range.hpp>
 #include <time.h>
 
-State state = SPIRAL;
 
-bool fol_wall = false;
-bool derecha = false;
 
-float spir_rot = 0.6;
-float spir_speed = 1000.0;
 
 SpecificWorker::SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check) : GenericWorker(configLoader, tprx)
 {
@@ -93,62 +88,100 @@ void SpecificWorker::initialize()
 	viewer->show();
 	const auto rob = viewer->add_robot(ROBOT_LENGTH, ROBOT_LENGTH, 0, 190, QColor("Blue"));
 	robot_polygon = std::get<0>(rob);
+
+	struct NominalRoom nom_room;
+
+	viewer_room = new AbstractGraphicViewer(this->frame_room, nom_room.GRID_MAX_DIM);
+	auto [rr, re] = viewer_room->add_robot(nom_room.ROBOT_WIDTH, nom_room.ROBOT_LENGTH, 0, 100, QColor("Blue"));
+	robot_room_draw = rr;
+
+	// draw room in viewer_room
+	viewer_room->scene.addRect(nom_room.GRID_MAX_DIM, QPen(Qt::black, 30));
+	viewer_room->show();
+
+	// initialise robot pose
+	robot_pose.setIdentity();
+	robot_pose.translate(Eigen::Vector2d(0.0,0.0));
+
 }
 
-
-void SpecificWorker::compute()
+RoboCompLidar3D::TPoints SpecificWorker::get_filtered_lidar_data()
 {
 	RoboCompLidar3D::TPoints filter_data;
 	try
 	{
 		const auto data = lidar3d_proxy->getLidarDataWithThreshold2d("helios", 12000, 1);
-		if (data.points.empty()) {qWarning() << "No points received"; return;}
+		if (data.points.empty())
+		{
+			qWarning() << "No points received";
+			return filter_data; // Return empty filter_data
+		}
 
 		filter_data = filter_min_distance(data.points);
-
 		draw_lidar(filter_data, &viewer->scene);
 	}
-	catch(const Ice::Exception &e) {std::cout << e << " Conexión con Laser\n";}
-	std::tuple<State, float, float> result;
-	switch (state)
-{
-		case IDLE:
-			qInfo() << "IDLE";
-			result = fwd(filter_data);
-			break;
-		case FORWARD:
-			qInfo() << "FORWARD";
-			result = fwd(filter_data);
-			break;
-		case TURN:
-			qInfo() << "TURN";
-			result = turn(filter_data);
-			break;
-		case FOLLOW_WALL:
-			qInfo() << "FOLLOW_WALL";
-			result = wall(filter_data);
-			break;
-		case SPIRAL:
-			qInfo() << "SPIRAL";
-			result = spiral(filter_data);
-			break;
-
-	}
-	state = std::get<State>(result);
-
-
-	try {
-		omnirobot_proxy->setSpeedBase(0,std::get<1>(result),std::get<2>(result));
-	}
-	catch(const Ice::Exception &e) {
+	catch (const Ice::Exception& e)
+	{
 		std::cout << e << " Conexión con Laser\n";
 	}
+
+	return filter_data;
+}
+
+void SpecificWorker::compute()
+{
+
+	auto filter_data = get_filtered_lidar_data();
+	//std::tuple<State, float, float> result = state_machine(filter_data, state);
+
+	//state = std::get<State>(result);
+
+	//set_speeds(result);
+
 
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
+void SpecificWorker::set_speeds(std::tuple<State, float, float> general_state)
+{
+	try {
+		omnirobot_proxy->setSpeedBase(0,std::get<1>(general_state),std::get<2>(general_state));
+	}
+	catch(const Ice::Exception &e) {
+		std::cout << e << " Conexión con Laser\n";
+	}
+}
+
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine(RoboCompLidar3D::TPoints filter_data, State state)
+{
+	switch (state)
+	{
+	case IDLE:
+		qInfo() << "IDLE";
+		return fwd(filter_data);
+		break;
+	case FORWARD:
+		qInfo() << "FORWARD";
+		return fwd(filter_data);
+		break;
+	case TURN:
+		qInfo() << "TURN";
+		return turn(filter_data);
+		break;
+	case FOLLOW_WALL:
+		qInfo() << "FOLLOW_WALL";
+		return wall(filter_data);
+		break;
+	case SPIRAL:
+		qInfo() << "SPIRAL";
+		return spiral(filter_data);
+		break;
+
+	}
+}
+
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
@@ -169,7 +202,7 @@ std::tuple<State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints pun
 	return{FORWARD, 1000.0, 0.0};
 }
 
-std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
@@ -200,7 +233,7 @@ std::tuple<State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints pu
 
 }
 
-std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
 	auto min_C = std::min_element(pC.begin(), pC.end(),
@@ -218,7 +251,7 @@ std::tuple<State, float, float> SpecificWorker::wall(RoboCompLidar3D::TPoints pu
 	return {FOLLOW_WALL, 0.0, 0.5};
 }
 
-std::tuple<State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
