@@ -25,7 +25,3 @@ gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_pearl_webots ; ba
 cd ~/robocomp/components/robocomp-robolab/components/hardware/external_control/joystickpublish/
 
 gnome-terminal --tab --execute bash -c "bin/JoystickPublish etc/config_shadow ; bash"
-
-cd ~/robocomp/components/beta-robotica-class/aspirador
-
-gnome-terminal --tab --execute bash -c "bin/aspirador etc/config ; bash"
