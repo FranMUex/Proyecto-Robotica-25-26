@@ -130,7 +130,8 @@ private:
 				{{QPointF{-5000.f, -2500.f}, 0.f, 0.f},
 					   {QPointF{5000.f, -2500.f}, 0.f, 0.f},
 					   {QPointF{5000.f, 2500.f}, 0.f, 0.f},
-					   {QPointF{-5000.f, 2500.f}, 0.f, 0.f}}};
+					   {QPointF{-5000.f, 2500.f}, 0.f, 0.f}}
+	};
 
 
 	QRectF dimensions;

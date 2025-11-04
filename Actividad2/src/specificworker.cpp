@@ -132,6 +132,33 @@ void SpecificWorker::compute()
 {
 
 	auto filter_data = get_filtered_lidar_data();
+
+	//A partir de aquí a lo mejor explota
+	Corners m_corners = room_detector.compute_corners(filter_data, &viewer->scene);
+
+	Corners m_room_corners = room.transform_corners_to(robot_pose);
+
+	Corners n_room_corners = room.corners;
+
+	hungarian.match(m_corners, room.corners);
+
+	Eigen::MatrixXd w(8,3);
+
+	std::vector<double> b;
+
+	for (int i = 0; i < 8; i++)
+	{
+		if ( i % 2 == 0)
+		{
+			w(i,0) = 1;
+			w(i,1) = 0;
+			w(i,2) = -m_room_corners[i][];
+		}
+	}
+
+
+
+
 	//std::tuple<State, float, float> result = state_machine(filter_data, state);
 
 	//state = std::get<State>(result);
