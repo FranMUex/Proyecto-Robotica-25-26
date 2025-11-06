@@ -21,9 +21,7 @@
 #include <cppitertools/groupby.hpp>
 #include <cppitertools/range.hpp>
 #include <time.h>
-
-
-
+#include <cppitertools/enumerate.hpp>
 
 SpecificWorker::SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check) : GenericWorker(configLoader, tprx)
 {
@@ -102,7 +100,6 @@ void SpecificWorker::initialize()
 	// initialise robot pose
 	robot_pose.setIdentity();
 	robot_pose.translate(Eigen::Vector2d(0.0,0.0));
-
 }
 
 RoboCompLidar3D::TPoints SpecificWorker::get_filtered_lidar_data()
@@ -130,33 +127,44 @@ RoboCompLidar3D::TPoints SpecificWorker::get_filtered_lidar_data()
 
 void SpecificWorker::compute()
 {
-
 	auto filter_data = get_filtered_lidar_data();
 
 	//A partir de aquí a lo mejor explota
 	Corners m_corners = room_detector.compute_corners(filter_data, &viewer->scene);
 
-	Corners m_room_corners = room.transform_corners_to(robot_pose);
+	Corners m_room_corners = room.transform_corners_to(robot_pose.inverse());
 
-	Corners n_room_corners = room.corners;
+	Match match = hungarian.match(m_corners, m_room_corners);
 
-	hungarian.match(m_corners, room.corners);
+	Eigen::MatrixXd W(m_corners.size() * 2, 3);
+	Eigen::VectorXd b(m_corners.size() * 2);
 
-	Eigen::MatrixXd w(8,3);
-
-	std::vector<double> b;
-
-	for (int i = 0; i < 8; i++)
+	for (auto &&[i, m]: match | iter::enumerate)
 	{
-		if ( i % 2 == 0)
-		{
-			w(i,0) = 1;
-			w(i,1) = 0;
-			w(i,2) = -m_room_corners[i][];
-		}
+		auto &[meas_c, nom_c, _] = m;
+		auto &[p_meas, __, ___] = meas_c;
+		auto &[p_nom, ____, _____] = nom_c;
+		b(2 * i)     = p_nom.x() - p_meas.x();
+		b(2 * i + 1) = p_nom.y() - p_meas.y();
+		W.block<1, 3>(2 * i, 0)     << 1.0, 0.0, -p_meas.y();
+		W.block<1, 3>(2 * i + 1, 0) << 0.0, 1.0, p_meas.x();
 	}
+	// estimate new pose with pseudoinverse
+	const Eigen::Vector3d r = (W.transpose() * W).inverse() * W.transpose() * b;
+	std::cout << r << std::endl;
+	qInfo() << "--------------------";
 
 
+	if (r.array().isNaN().any())
+		return;
+
+
+	robot_pose.translate(Eigen::Vector2d(r(0), r(1)));
+	robot_pose.rotate(r[2]);
+
+	robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
+	double angle = std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0));
+	robot_room_draw->setRotation(angle * 180 / M_PI);
 
 
 	//std::tuple<State, float, float> result = state_machine(filter_data, state);
@@ -164,7 +172,6 @@ void SpecificWorker::compute()
 	//state = std::get<State>(result);
 
 	//set_speeds(result);
-
 
 }
 

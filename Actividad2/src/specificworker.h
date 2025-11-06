@@ -109,9 +109,9 @@ private:
 		float length;
 		Corners corners;
 
-		QRectF GRID_MAX_DIM;
-		float ROBOT_WIDTH;
-		float ROBOT_LENGTH;
+		QRectF GRID_MAX_DIM{-5000, -2500, 10000, 5000};
+		float ROBOT_WIDTH = 400;
+		float ROBOT_LENGTH = 400;
 
 		explicit NominalRoom(const float width_=10000.f, const float length_=5000.f, Corners  corners_ = {}) : width(width_), length(length_), corners(std::move(corners_)){};
 		Corners transform_corners_to(const Eigen::Affine2d &transform) const  // for room to robot pass the inverse of robot_pose
