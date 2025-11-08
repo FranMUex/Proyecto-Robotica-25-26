@@ -5,8 +5,8 @@ bash ~/robocomp/tools/rcnode/rcnode.sh &
 cd /usr/local/bin
 
 if ! test -f robocomp; then
-  sudo ln -s ~/software/pip_env/bin/robocomp
-  sudo ln -s ~/software/pip_env/bin/robocompdsl
+  sudo ln -s /home/usuario/software/pip_env/bin/robocomp
+  sudo ln -s /home/usuario/software/pip_env/bin/robocompdsl
 fi
 
 webots &
