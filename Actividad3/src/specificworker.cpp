@@ -417,6 +417,14 @@ int SpecificWorker::startup_check()
 	return 0;
 }
 
+//UBSCRIPTION to sendData method from JoystickAdapter interface
+void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data)
+{
+	//subscribesToCODE
+
+}
+
+
 
 
 /**************************************/

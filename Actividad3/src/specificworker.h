@@ -57,7 +57,7 @@ public:
 	SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check);
 
 
-
+	void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
 
 	/**
      * \brief Destructor for SpecificWorker.

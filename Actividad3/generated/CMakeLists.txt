@@ -25,8 +25,6 @@ INCLUDE (../src/CMakeLists.txt)
 
 ADD_DEFINITIONS ("-DICE_CPP11_MAPPING")
 FIND_PACKAGE( Ice REQUIRED COMPONENTS Ice++11 IceStorm++11)
-find_package(OpenCV REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Sources set
 SET (SOURCES
@@ -37,19 +35,20 @@ SET (SOURCES
   $ENV{ROBOCOMP}/classes/ConfigLoader/ConfigLoader.cpp
   main.cpp
   genericworker.cpp
+  joystickadapterI.cpp
 )
 
 
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_IDSL_TO_ICE(Lidar3D GenericBase OmniRobot)
-ROBOCOMP_ICE_TO_SRC(Lidar3D GenericBase OmniRobot)
+ROBOCOMP_IDSL_TO_ICE(GenericBase Lidar3D Camera360RGB JoystickAdapter OmniRobot)
+ROBOCOMP_ICE_TO_SRC(GenericBase Lidar3D Camera360RGB JoystickAdapter OmniRobot)
 SET (EXECUTABLE_OUTPUT_PATH ${RC_COMPONENT_DEVEL_PATH}/bin)
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../src)
 
 # Specify construction and link process
 ADD_EXECUTABLE( localiser ${SOURCES} ${MOC_SOURCES} ${RC_SOURCES} ${UI_HEADERS} )
-TARGET_LINK_LIBRARIES( localiser ${LIBS}  ${STATIC_LIBS} ${SPECIFIC_LIBS} ${QT_LIBRARIES} ${Ice_LIBRARIES} ${OpenCV_LIBS})
+TARGET_LINK_LIBRARIES( localiser ${LIBS}  ${STATIC_LIBS} ${SPECIFIC_LIBS} ${QT_LIBRARIES} ${Ice_LIBRARIES} )
 SET_TARGET_PROPERTIES(localiser
         PROPERTIES
         CXX_STANDARD ${CXX_STANDARD}

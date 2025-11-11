@@ -15,7 +15,14 @@ LIST(APPEND HEADERS
         ../src/ransac_line_detector.h
 )
 
-LIST(APPEND LIBS ${LIBS})
+# Find OpenCV package
+find_package(OpenCV REQUIRED)
+
+# Add OpenCV include directories
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+# Add OpenCV libraries to the link libraries
+LIST(APPEND LIBS ${LIBS} ${OpenCV_LIBS})
 
 # no-char8_t to avoid a problem with ICE Connection lib.
 add_definitions(-O4 -fmax-errors=1 -fno-char8_t)
