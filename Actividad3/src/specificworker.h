@@ -192,7 +192,7 @@ class SpecificWorker final : public GenericWorker
         RetVal orient_to_door(const RoboCompLidar3D::TPoints &points);
         RetVal cross_door(const RoboCompLidar3D::TPoints &points);
         RetVal localise(const Match &match);
-        RetVal goto_room_center(const RoboCompLidar3D::TPoints &points);
+        RetVal goto_room_center(const RoboCompLidar3D::TPoints& points, Corners corners, Lines lines);
         RetVal update_pose(const Corners &corners, const Match &match);
         RetVal turn(const Corners &corners);
         RetVal process_state(const RoboCompLidar3D::TPoints &data, const Corners &corners, const Match &match, AbstractGraphicViewer *viewer);
@@ -246,12 +246,14 @@ class SpecificWorker final : public GenericWorker
 
     RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points,int lado);//0 adelante, 1 drcha, 2 izq
 
-    std::tuple<State, float, float> state_machine(RoboCompLidar3D::TPoints puntos, State state);
+    RetVal state_machine(RoboCompLidar3D::TPoints puntos, State state);
+    RetVal state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines);
 
-    std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
-    std::tuple<State, float, float> turn(RoboCompLidar3D::TPoints puntos);
-    std::tuple<State, float, float> wall(RoboCompLidar3D::TPoints puntos);
-    std::tuple<State, float, float> spiral(RoboCompLidar3D::TPoints puntos);
+
+    RetVal fwd(RoboCompLidar3D::TPoints puntos);
+    RetVal turn(RoboCompLidar3D::TPoints puntos);
+    RetVal wall(RoboCompLidar3D::TPoints puntos);
+    RetVal spiral(RoboCompLidar3D::TPoints puntos);
 
     void set_speeds(std::tuple<State, float, float> general_state);
 

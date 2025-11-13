@@ -56,6 +56,7 @@ namespace rc   // aka RoboComp
              /// Estimate the room center (robot frame) from a set of wall lines expressed as
              /// ax + by + c = 0 in Eigen::Vector3d (a,b,c). Lines can be unnormalized.
              /// Returns std::nullopt if not enough info (e.g., missing one direction).
+             //usar vector.norm() para sacar el módulo
              std::optional<Eigen::Vector2d>
              estimate_center_from_walls(const Lines &lines) const;
 

@@ -171,7 +171,6 @@ void SpecificWorker::compute()
 
 void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
 {
-	//A partir de aquí a lo mejor explota
 	const auto &[m_corners, lines] = room_detector.compute_corners(filter_data, &viewer->scene);
 	Corners m_room_corners = room.transform_corners_to(robot_pose.inverse());
 
@@ -242,6 +241,30 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine(Ro
 		qInfo() << "SPIRAL";
 		return spiral(filter_data);
 		break;
+
+	}
+}
+
+std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines)
+{
+	switch (state)
+	{
+	case State::GOTO_ROOM_CENTER:
+		qInfo() << "GOTO_ROOM_CENTER";
+		return goto_room_center(filter_data, corners, lines);
+		break;
+	}
+}
+
+SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points, Corners corners, Lines lines)
+{
+	auto centro = room_detector.estimate_center_from_walls(lines)->norm();
+
+	auto angulo_robot = points[points.size() / 2].phi;
+	robot_pose.
+
+	if ( std::abs(angulo_robot - centro) < 0.05 )
+	{
 
 	}
 }
