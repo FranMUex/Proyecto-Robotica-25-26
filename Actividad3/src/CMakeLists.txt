@@ -5,6 +5,9 @@ LIST(APPEND SOURCES
         ../src/hungarian.cpp
         ../src/room_detector.cpp
         ../src/ransac_line_detector.cpp
+        ../src/time_series_plotter.cpp
+        ../src/door_detector.cpp
+        ../src/qcustomplot.cpp
 )
 
 # Headers set
@@ -13,16 +16,19 @@ LIST(APPEND HEADERS
         ../src/hungarian.h
         ../src/room_detector.h
         ../src/ransac_line_detector.h
+        ../src/common_types.h
+        ../src/time_series_plotter.h
+        ../src/nominal_room.h
+        ../src/door_detector.h
+        ../src/image_processor.h
+        ../src/qcustomplot.h
 )
 
-# Find OpenCV package
-find_package(OpenCV REQUIRED)
+INCLUDE($ENV{ROBOCOMP}/cmake/modules/opencv4.cmake)
 
-# Add OpenCV include directories
-include_directories(${OpenCV_INCLUDE_DIRS})
+SET(LIBS ${LIBS} tbb Qt6PrintSupport)
 
-# Add OpenCV libraries to the link libraries
-LIST(APPEND LIBS ${LIBS} ${OpenCV_LIBS})
+LIST(APPEND LIBS ${LIBS})
 
 # no-char8_t to avoid a problem with ICE Connection lib.
 add_definitions(-O4 -fmax-errors=1 -fno-char8_t)

@@ -1,8 +1,10 @@
 # Proxies for required interfaces
 Proxies.Lidar3D = "lidar3d:tcp -h localhost -p 11989"
 Proxies.OmniRobot = "omnirobot:tcp -h localhost -p 10004"
-
-
+Proxies.TopicManager = "IceStorm/TopicManager:default -p 9999"
+Proxies.Camera360RGB = "camera360rgb:tcp -h localhost -p 10098"
+Endpoints.JoystickAdapterTopic = "tcp -p 0"
+Endpoints.JoystickAdapterPrefix = ""
 
 Period.Compute = 100
 Period.Emergency = 500

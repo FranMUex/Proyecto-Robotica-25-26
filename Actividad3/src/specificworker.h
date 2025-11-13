@@ -1,5 +1,5 @@
 /*
- *    Copyright (C) 2025 by YOUR NAME HERE
+*    Copyright (C) 2025 by YOUR NAME HERE
  *
  *    This file is part of RoboComp
  *
@@ -18,8 +18,8 @@
  */
 
 /**
-	\brief
-	@author authorname
+    \brief
+    @author authorname
 */
 
 
@@ -32,144 +32,234 @@
 //#define HIBERNATION_ENABLED
 
 #include <genericworker.h>
-#include <abstract_graphic_viewer/abstract_graphic_viewer.h>
-#include "hungarian.h"
-#include "room_detector.h"
+#include "abstract_graphic_viewer/abstract_graphic_viewer.h"
 #include <expected>
+#include <random>
+#include <doublebuffer/DoubleBuffer.h>
+#include "time_series_plotter.h"
 
+#ifdef emit
+#undef emit
+#endif
+#include <execution>
+#include <tuple>
+#include <utility>
+#include <vector>
+#include "room_detector.h"
+#include "hungarian.h"
+#include "nominal_room.h"
+#include "door_detector.h"
+#include "image_processor.h"
 
 /**
  * \brief Class SpecificWorker implements the core functionality of the component.
  */
-class SpecificWorker : public GenericWorker
+class SpecificWorker final : public GenericWorker
 {
-Q_OBJECT
-public:
+    Q_OBJECT
+    public:
+        /**
+         * \brief Constructor for SpecificWorker.
+         * \param configLoader Configuration loader for the component.
+         * \param tprx Tuple of proxies required for the component.
+         * \param startup_check Indicates whether to perform startup checks.
+         */
+        SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check);
+        void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
+        ~SpecificWorker();
+
+    public slots:
+        void initialize();
+        void compute();
+        void emergency();
+        void restore();
+        int startup_check();
+
+    private:
+        bool startup_check_flag;
+    bool fol_wall = false;
+    bool derecha = false;
+
+    float spir_rot = 0.6;
+    float spir_speed = 1000.0;
+
+    struct NominalRoom
+    {
+        float width; //  mm
+        float length;
+        Corners corners;
+
+        QRectF GRID_MAX_DIM{-5000, -2500, 10000, 5000};
+        float ROBOT_WIDTH = 400;
+        float ROBOT_LENGTH = 400;
+
+        explicit NominalRoom(const float width_=10000.f, const float length_=5000.f, Corners  corners_ = {}) : width(width_), length(length_), corners(std::move(corners_)){};
+        Corners transform_corners_to(const Eigen::Affine2d &transform) const  // for room to robot pass the inverse of robot_pose
+        {
+            Corners transformed_corners;
+            for(const auto &[p, _, __] : corners)
+            {
+                auto ep = Eigen::Vector2d{p.x(), p.y()};
+                Eigen::Vector2d tp = transform * ep;
+                transformed_corners.emplace_back(QPointF{static_cast<float>(tp.x()), static_cast<float>(tp.y())}, 0.f, 0.f);
+            }
+            return transformed_corners;
+        }
+    };
+    NominalRoom room{10000.f, 5000.f,
+                {{QPointF{-5000.f, -2500.f}, 0.f, 0.f},
+                       {QPointF{5000.f, -2500.f}, 0.f, 0.f},
+                       {QPointF{5000.f, 2500.f}, 0.f, 0.f},
+                       {QPointF{-5000.f, 2500.f}, 0.f, 0.f}}
+    };
 
 
+    QRectF dimensions;
+    const int ROBOT_LENGTH = 400;
+    QGraphicsPolygonItem *robot_polygon;
 
-    /**
-     * \brief Constructor for SpecificWorker.
-     * \param configLoader Configuration loader for the component.
-     * \param tprx Tuple of proxies required for the component.
-     * \param startup_check Indicates whether to perform startup checks.
-     */
-	SpecificWorker(const ConfigLoader& configLoader, TuplePrx tprx, bool startup_check);
+    struct Params
+        {
+            float ROBOT_WIDTH = 460;  // mm
+            float ROBOT_LENGTH = 480;  // mm
+            float MAX_ADV_SPEED = 1000; // mm/s
+            float MAX_ROT_SPEED = 1; // rad/s
+            float MAX_SIDE_SPEED = 50; // mm/s
+            float MAX_TRANSLATION = 500; // mm/s
+            float MAX_ROTATION = 0.2;
+            float STOP_THRESHOLD = 700; // mm
+            float ADVANCE_THRESHOLD = ROBOT_WIDTH * 3; // mm
+            float LIDAR_FRONT_SECTION = 0.2; // rads, aprox 12 degrees
+            // wall
+            float LIDAR_RIGHT_SIDE_SECTION = M_PI/3; // rads, 90 degrees
+            float LIDAR_LEFT_SIDE_SECTION = -M_PI/3; // rads, 90 degrees
+            float WALL_MIN_DISTANCE = ROBOT_WIDTH*1.2;
+            // match error correction
+            float MATCH_ERROR_SIGMA = 150.f; // mm
+            float DOOR_REACHED_DIST = 300.f;
+            std::string LIDAR_NAME_LOW = "bpearl";
+            std::string LIDAR_NAME_HIGH = "helios";
+            QRectF GRID_MAX_DIM{-5000, 2500, 10000, -5000};
 
+            // relocalization
+            float RELOCAL_CENTER_EPS = 300.f;    // mm: stop when |mean| < eps
+            float RELOCAL_KP = 0.002f;           // gain to convert mean (mm) -> speed (magnitude)
+            float RELOCAL_MAX_ADV = 300.f;       // mm/s cap while re-centering
+            float RELOCAL_MAX_SIDE = 300.f;      // mm/s cap while re-centering
+            float RELOCAL_ROT_SPEED = 0.3f;     // rad/s while aligning
+            float RELOCAL_DELTA = 5.0f * M_PI/180.f; // small probe angle in radians
+            float RELOCAL_MATCH_MAX_DIST = 2000.f;   // mm for Hungarian gating
+            float RELOCAL_DONE_COST = 500.f;
+            float RELOCAL_DONE_MATCH_MAX_ERROR = 1000.f;
+        };
+        Params params;
 
-	void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
+        // viewer
+        AbstractGraphicViewer *viewer, *viewer_room;
+        QGraphicsPolygonItem *robot_draw, *robot_room_draw;
 
-	/**
-     * \brief Destructor for SpecificWorker.
-     */
-	~SpecificWorker();
+        // robot
+        Eigen::Affine2d robot_pose;
 
+        // rooms
+        std::vector<NominalRoom> nominal_rooms{ NominalRoom{5500.f, 4000.f}, NominalRoom{8000.f, 4000.f}};
+        rc::Room_Detector room_detector;
+        rc::Hungarian hungarian;
 
-public slots:
-	/**
-	 * \brief Initializes the worker one time.
-	 */
-	void initialize();
+        // state machine
+        enum class State
+        {
+            GOTO_DOOR, ORIENT_TO_DOOR, LOCALISE, GOTO_ROOM_CENTER, TURN, IDLE, CROSS_DOOR,
+            FORWARD, FOLLOW_WALL, SPIRAL
+        };
 
-/**
-	 * \brief Main compute loop of the worker.
-	 */
-	void compute();
-
-	/**
-	 * \brief Handles the emergency state loop.
-	 */
-	void emergency();
-
-	/**
-	 * \brief Restores the component from an emergency state.
-	 */
-	void restore();
-
-    /**
-     * \brief Performs startup checks for the component.
-     * \return An integer representing the result of the checks.
-     */
-	int startup_check();
-
-private:
-
-	enum State { IDLE, FORWARD, TURN, FOLLOW_WALL, SPIRAL};
-	State state = SPIRAL;
-
-	bool fol_wall = false;
-	bool derecha = false;
-
-	float spir_rot = 0.6;
-	float spir_speed = 1000.0;
-
-	struct NominalRoom
-	{
-		float width; //  mm
-		float length;
-		Corners corners;
-
-		QRectF GRID_MAX_DIM{-5000, -2500, 10000, 5000};
-		float ROBOT_WIDTH = 400;
-		float ROBOT_LENGTH = 400;
-
-		explicit NominalRoom(const float width_=10000.f, const float length_=5000.f, Corners  corners_ = {}) : width(width_), length(length_), corners(std::move(corners_)){};
-		Corners transform_corners_to(const Eigen::Affine2d &transform) const  // for room to robot pass the inverse of robot_pose
-		{
-			Corners transformed_corners;
-			for(const auto &[p, _, __] : corners)
-			{
-				auto ep = Eigen::Vector2d{p.x(), p.y()};
-				Eigen::Vector2d tp = transform * ep;
-				transformed_corners.emplace_back(QPointF{static_cast<float>(tp.x()), static_cast<float>(tp.y())}, 0.f, 0.f);
-			}
-			return transformed_corners;
-		}
-	};
-	NominalRoom room{10000.f, 5000.f,
-				{{QPointF{-5000.f, -2500.f}, 0.f, 0.f},
-					   {QPointF{5000.f, -2500.f}, 0.f, 0.f},
-					   {QPointF{5000.f, 2500.f}, 0.f, 0.f},
-					   {QPointF{-5000.f, 2500.f}, 0.f, 0.f}}
-	};
+         inline const char* to_string(const State s) const
+        {
+            switch(s) {
+                case State::IDLE:               return "IDLE";
+                case State::LOCALISE:           return "LOCALISE";
+                case State::GOTO_DOOR:          return "GOTO_DOOR";
+                case State::TURN:               return "TURN";
+                case State::ORIENT_TO_DOOR:     return "ORIENT_TO_DOOR";
+                case State::GOTO_ROOM_CENTER:   return "GOTO_ROOM_CENTER";
+                case State::CROSS_DOOR:         return "CROSS_DOOR";
+                default:                        return "UNKNOWN";
+            }
+        }
+        State state = State::LOCALISE;
+        using RetVal = std::tuple<State, float, float>;
+        RetVal goto_door(const RoboCompLidar3D::TPoints &points);
+        RetVal orient_to_door(const RoboCompLidar3D::TPoints &points);
+        RetVal cross_door(const RoboCompLidar3D::TPoints &points);
+        RetVal localise(const Match &match);
+        RetVal goto_room_center(const RoboCompLidar3D::TPoints &points);
+        RetVal update_pose(const Corners &corners, const Match &match);
+        RetVal turn(const Corners &corners);
+        RetVal process_state(const RoboCompLidar3D::TPoints &data, const Corners &corners, const Match &match, AbstractGraphicViewer *viewer);
 
 
-	QRectF dimensions;
-	AbstractGraphicViewer *viewer;
-	const int ROBOT_LENGTH = 400;
-	QGraphicsPolygonItem *robot_polygon;
-	QGraphicsPolygonItem *robot_room_draw;
+        // draw
+        void draw_lidar(const RoboCompLidar3D::TPoints &filtered_points, std::optional<Eigen::Vector2d> center, QGraphicsScene *scene);
 
-	AbstractGraphicViewer *viewer_room;
-	Eigen::Affine2d robot_pose;
-	rc::Room_Detector room_detector;
-	rc::Hungarian hungarian;
+        // aux
+        RoboCompLidar3D::TPoints read_data();
+        std::expected<int, std::string> closest_lidar_index_to_given_angle(const auto &points, float angle);
+        RoboCompLidar3D::TPoints filter_same_phi(const RoboCompLidar3D::TPoints &points);
+        RoboCompLidar3D::TPoints filter_isolated_points(const RoboCompLidar3D::TPoints &points, float d);
+        void print_match(const Match &match, const float error =1.f) const;
 
-	RoboCompLidar3D::TPoints get_filtered_lidar_data();
-	void draw_lidar(const auto &points, QGraphicsScene* scene);
+        // random number generator
+        std::random_device rd;
 
-	RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
+        // DoubleBuffer for velocity commands
+        DoubleBuffer<std::tuple<float, float, float, long>, std::tuple<float, float, float, long>> commands_buffer;
+        std::tuple<float, float, float, long> last_velocities{0.f, 0.f, 0.f, 0.f};
 
-	RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points,int lado);//0 adelante, 1 drcha, 2 izq
+        // plotter
+        std::unique_ptr<TimeSeriesPlotter> time_series_plotter;
+        int match_error_graph; // To store the index of the speed graph
 
-	std::tuple<State, float, float> state_machine(RoboCompLidar3D::TPoints puntos, State state);
+        // doors
+        DoorDetector door_detector;
 
-	std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
-	std::tuple<State, float, float> turn(RoboCompLidar3D::TPoints puntos);
-	std::tuple<State, float, float> wall(RoboCompLidar3D::TPoints puntos);
-	std::tuple<State, float, float> spiral(RoboCompLidar3D::TPoints puntos);
+        // image processor
+        rc::ImageProcessor image_processor;
 
-	void set_speeds(std::tuple<State, float, float> general_state);
+        // timing
+        std::chrono::time_point<std::chrono::high_resolution_clock> last_time = std::chrono::high_resolution_clock::now();
 
+        // relocalization
+        bool relocal_centered = false;
+        bool localised = false;
 
+        bool update_robot_pose(const Corners &corners, const Match &match);
+        void move_robot(float adv, float rot, float max_match_error);
+        Eigen::Vector3d solve_pose(const Corners &corners, const Match &match);
+        void predict_robot_pose();
+        std::tuple<float, float> robot_controller(const Eigen::Vector2f &target);
 
-	/**
-     * \brief Flag indicating whether startup checks are enabled.
-     */
-	bool startup_check_flag;
+    RoboCompLidar3D::TPoints get_filtered_lidar_data();
+    void draw_lidar(const auto &points, QGraphicsScene* scene);
+    void draw_lidar(const auto &points,std::optional<Eigen::Vector2d> center_opt, QGraphicsScene* scene);
+
+    RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
+
+    RoboCompLidar3D::TPoints filter_ahead(RoboCompLidar3D::TPoints points,int lado);//0 adelante, 1 drcha, 2 izq
+
+    std::tuple<State, float, float> state_machine(RoboCompLidar3D::TPoints puntos, State state);
+
+    std::tuple<State, float, float> fwd(RoboCompLidar3D::TPoints puntos);
+    std::tuple<State, float, float> turn(RoboCompLidar3D::TPoints puntos);
+    std::tuple<State, float, float> wall(RoboCompLidar3D::TPoints puntos);
+    std::tuple<State, float, float> spiral(RoboCompLidar3D::TPoints puntos);
+
+    void set_speeds(std::tuple<State, float, float> general_state);
+
+    void localise(RoboCompLidar3D::TPoints filter_data);
+
 
 signals:
-	//void customSignal();
+        //void customSignal();
 };
 
 #endif

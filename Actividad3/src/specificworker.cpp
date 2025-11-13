@@ -71,36 +71,52 @@ SpecificWorker::~SpecificWorker()
 
 void SpecificWorker::initialize()
 {
+	std::cout << "Initialize worker" << std::endl;
+	if(this->startup_check_flag)
+	{
+		this->startup_check();
+	}
+	else
+	{
+		///////////// Your code ////////
+		// Viewer
+		viewer = new AbstractGraphicViewer(this->frame, params.GRID_MAX_DIM);
+		auto [r, e] = viewer->add_robot(params.ROBOT_WIDTH, params.ROBOT_LENGTH, 0, 100, QColor("Blue"));
+		robot_draw = r;
+		//viewer->show();
 
-    //initializeCODE
 
-    /////////GET PARAMS, OPEND DEVICES....////////
-    //int period = configLoader.get<int>("Period.Compute") //NOTE: If you want get period of compute use getPeriod("compute")
-    //std::string device = configLoader.get<std::string>("Device.name")
+		viewer_room = new AbstractGraphicViewer(this->frame_room, params.GRID_MAX_DIM);
+		auto [rr, re] = viewer_room->add_robot(params.ROBOT_WIDTH, params.ROBOT_LENGTH, 0, 100, QColor("Blue"));
+		robot_room_draw = rr;
+		// draw room in viewer_room
+		viewer_room->scene.addRect(nominal_rooms[0].GRID_MAX_DIM, QPen(Qt::black, 30));
+		//viewer_room->show();
+		show();
 
-	std::cout << "initialize worker" << std::endl;
 
-	this->dimensions = QRectF(-6000, -3000, 12000, 6000);
-	viewer = new AbstractGraphicViewer(this->frame, this->dimensions);
-	this->resize(900,450);
-	viewer->show();
-	const auto rob = viewer->add_robot(ROBOT_LENGTH, ROBOT_LENGTH, 0, 190, QColor("Blue"));
-	robot_polygon = std::get<0>(rob);
+		// initialise robot pose
+		robot_pose.setIdentity();
+		robot_pose.translate(Eigen::Vector2d(0.0,0.0));
 
-	struct NominalRoom nom_room;
 
-	viewer_room = new AbstractGraphicViewer(this->frame_room, nom_room.GRID_MAX_DIM);
-	auto [rr, re] = viewer_room->add_robot(nom_room.ROBOT_WIDTH, nom_room.ROBOT_LENGTH, 0, 100, QColor("Blue"));
-	robot_room_draw = rr;
+		// time series plotter for match error
+		TimeSeriesPlotter::Config plotConfig;
+		plotConfig.title = "Maximum Match Error Over Time";
+		plotConfig.yAxisLabel = "Error (mm)";
+		plotConfig.timeWindowSeconds = 15.0; // Show a 15-second window
+		plotConfig.autoScaleY = false;       // We will set a fixed range
+		plotConfig.yMin = 0;
+		plotConfig.yMax = 1000;
+		time_series_plotter = std::make_unique<TimeSeriesPlotter>(frame_plot_error, plotConfig);
+		match_error_graph = time_series_plotter->addGraph("", Qt::blue);
 
-	// draw room in viewer_room
-	viewer_room->scene.addRect(nom_room.GRID_MAX_DIM, QPen(Qt::black, 30));
-	viewer_room->show();
 
-	// initialise robot pose
-	robot_pose.setIdentity();
-	robot_pose.translate(Eigen::Vector2d(0.0,0.0));
+		// stop robot
+		//move_robot(0, 0, 0);
+	}
 }
+
 
 RoboCompLidar3D::TPoints SpecificWorker::get_filtered_lidar_data()
 {
@@ -127,11 +143,36 @@ RoboCompLidar3D::TPoints SpecificWorker::get_filtered_lidar_data()
 
 void SpecificWorker::compute()
 {
-	auto filter_data = get_filtered_lidar_data();
+   RoboCompLidar3D::TPoints data = get_filtered_lidar_data();
+   data = door_detector.filter_points(data, &viewer->scene);
 
+   draw_lidar(data, &viewer->scene);
+	localise(data);
+
+
+   // // draw robot in viewer
+   // robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
+   // const double angle = qRadiansToDegrees(std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0)));
+   // robot_room_draw->setRotation(angle);
+   //
+   //
+   // // update GUI
+   // time_series_plotter->update();
+   // lcdNumber_adv->display(adv);
+   // lcdNumber_rot->display(rot);
+   // lcdNumber_x->display(robot_pose.translation().x());
+   // lcdNumber_y->display(robot_pose.translation().y());
+   // lcdNumber_angle->display(angle);
+   // last_time = std::chrono::high_resolution_clock::now();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
+{
 	//A partir de aquí a lo mejor explota
-	Corners m_corners = room_detector.compute_corners(filter_data, &viewer->scene);
-
+	const auto &[m_corners, lines] = room_detector.compute_corners(filter_data, &viewer->scene);
 	Corners m_room_corners = room.transform_corners_to(robot_pose.inverse());
 
 	Match match = hungarian.match(m_corners, m_room_corners);
@@ -165,17 +206,7 @@ void SpecificWorker::compute()
 	robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
 	double angle = std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0));
 	robot_room_draw->setRotation(angle * 180 / M_PI);
-
-
-	//std::tuple<State, float, float> result = state_machine(filter_data, state);
-
-	//state = std::get<State>(result);
-
-	//set_speeds(result);
-
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void SpecificWorker::set_speeds(std::tuple<State, float, float> general_state)
 {
@@ -191,23 +222,23 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine(Ro
 {
 	switch (state)
 	{
-	case IDLE:
+	case State::IDLE:
 		qInfo() << "IDLE";
 		return fwd(filter_data);
 		break;
-	case FORWARD:
+	case State::FORWARD:
 		qInfo() << "FORWARD";
 		return fwd(filter_data);
 		break;
-	case TURN:
+	case State::TURN:
 		qInfo() << "TURN";
 		return turn(filter_data);
 		break;
-	case FOLLOW_WALL:
+	case State::FOLLOW_WALL:
 		qInfo() << "FOLLOW_WALL";
 		return wall(filter_data);
 		break;
-	case SPIRAL:
+	case State::SPIRAL:
 		qInfo() << "SPIRAL";
 		return spiral(filter_data);
 		break;
@@ -219,7 +250,7 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLida
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
-		return {TURN, 0.0, 1.0};
+		return {State::TURN, 0.0, 1.0};
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 	auto min = std::min_element(puntos.begin(), puntos.end(),
@@ -229,26 +260,26 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLida
 	{
 		derecha = min_C->phi >= 0 || (min->r < 550 && min->phi >= 0);
 
-		return {TURN, 0.0, 0.0};
+		return {State::TURN, 0.0, 0.0};
 	}
 
 
-	return{FORWARD, 1000.0, 0.0};
+	return{State::FORWARD, 1000.0, 0.0};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::turn(RoboCompLidar3D::TPoints puntos) //NO GIRA IZQ
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
-		return {TURN, 0.0, 1.0};
+		return {State::TURN, 0.0, 1.0};
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
 
 	if (min_C->r<550)
 	{
 		if (derecha)
-			return{TURN, 0.0, -1.0};
-		return {TURN, 0.0, 1.0};
+			return{State::TURN, 0.0, -1.0};
+		return {State::TURN, 0.0, 1.0};
 	}
 
 	srand(time(NULL));
@@ -257,11 +288,11 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::turn(RoboCompLid
 	switch (rand_num)
 	{
 	case 0:
-		return {SPIRAL, 0.0, 0.0};
+		return {State::SPIRAL, 0.0, 0.0};
 	case 1:
-		return {FORWARD, 0.0, 0.0};
+		return {State::FORWARD, 0.0, 0.0};
 	case 2:
-		return {FOLLOW_WALL, 0.0, 0.0};
+		return {State::FOLLOW_WALL, 0.0, 0.0};
 
 	}
 
@@ -277,19 +308,19 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::wall(RoboCompLid
 
 	if (min->r > 550 || min_C->r > 650)
 	{
-			return {FORWARD, 0.0, 0.0};
+			return {State::FORWARD, 0.0, 0.0};
 	}
 
 	if (derecha)
-		return {FOLLOW_WALL, 0.0, -0.5};
-	return {FOLLOW_WALL, 0.0, 0.5};
+		return {State::FOLLOW_WALL, 0.0, -0.5};
+	return {State::FOLLOW_WALL, 0.0, 0.5};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::spiral(RoboCompLidar3D::TPoints puntos)
 {
 	auto pC = filter_ahead(puntos, 0);
 	if(pC.empty())
-		return {TURN, 0.0, 1.0};
+		return {State::TURN, 0.0, 1.0};
 
 	auto min_C = std::min_element(pC.begin(), pC.end(),
 			[](const auto& p1, const auto& p2) { return p1.r < p2.r; });
@@ -304,18 +335,18 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::spiral(RoboCompL
 	{
 		derecha = min_C->phi >= 0 || (min->r < 550 && min->phi >= 0);
 		spir_rot = 1.0;
-		return {TURN, 0.0, 0.0};
+		return {State::TURN, 0.0, 0.0};
 	}
 
 	if (spir_rot < 0.005)
 	{
 		spir_rot = 1.0;
 		derecha = !derecha;
-		return {SPIRAL, 0.0, 0.0};
+		return {State::SPIRAL, 0.0, 0.0};
 	}
 	spir_rot -= 0.007;
 
-	return {SPIRAL, spir_speed, spir_rot * sign};
+	return {State::SPIRAL, spir_speed, spir_rot * sign};
 }
 
 
@@ -369,6 +400,27 @@ RoboCompLidar3D::TPoints SpecificWorker::filter_min_distance(RoboCompLidar3D::TP
 	return salida;
 }
 void SpecificWorker::draw_lidar(const auto &points, QGraphicsScene* scene)
+{
+	static std::vector<QGraphicsItem*> draw_points;
+	for (const auto &p : draw_points)
+	{
+		scene->removeItem(p);
+		delete p;
+	}
+	draw_points.clear();
+
+	const QColor color("LightGreen");
+	const QPen pen(color, 10);
+	//const QBrush brush(color, Qt::SolidPattern);
+	for (const auto &p : points)
+	{
+		const auto dp = scene->addRect(-25, -25, 50, 50, pen);
+		dp->setPos(p.x, p.y);
+		draw_points.push_back(dp);   // add to the list of points to be deleted next time
+	}
+}
+
+void draw_lidar(const auto &points,std::optional<Eigen::Vector2d> center_opt, QGraphicsScene* scene)
 {
 	static std::vector<QGraphicsItem*> draw_points;
 	for (const auto &p : draw_points)
