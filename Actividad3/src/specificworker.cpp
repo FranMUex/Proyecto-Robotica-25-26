@@ -260,13 +260,13 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 {
 	auto centro = room_detector.estimate_center_from_walls(lines)->norm();
 
-	auto angulo_robot = points[points.size() / 2].phi;
-	robot_pose.
-
-	if ( std::abs(angulo_robot - centro) < 0.05 )
-	{
-
-	}
+	// auto angulo_robot = points[points.size() / 2].phi;
+	// robot_pose.
+	//
+	// if ( std::abs(angulo_robot - centro) < 0.05 )
+	// {
+	//
+	// }
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
