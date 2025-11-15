@@ -1,2 +1,7 @@
-cmake-build-debug/
-.idea/
+*.idea
+*.vscode
+*cmake-build-debug
+*CMakeCache.txt
+*build
+*bin
+*.new
