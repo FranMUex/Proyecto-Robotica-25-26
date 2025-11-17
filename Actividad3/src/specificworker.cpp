@@ -150,20 +150,17 @@ void SpecificWorker::compute()
 	localise(data);
 
 
-   // // draw robot in viewer
-   // robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
-   // const double angle = qRadiansToDegrees(std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0)));
-   // robot_room_draw->setRotation(angle);
-   //
-   //
-   // // update GUI
-   // time_series_plotter->update();
-   // lcdNumber_adv->display(adv);
-   // lcdNumber_rot->display(rot);
-   // lcdNumber_x->display(robot_pose.translation().x());
-   // lcdNumber_y->display(robot_pose.translation().y());
-   // lcdNumber_angle->display(angle);
-   // last_time = std::chrono::high_resolution_clock::now();
+   // draw robot in viewer
+   robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
+   const double angle = qRadiansToDegrees(std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0)));
+   robot_room_draw->setRotation(angle);
+
+
+   // update GUI
+   time_series_plotter->update();
+   lcdNumber_x->display(robot_pose.translation().x());
+   lcdNumber_y->display(robot_pose.translation().y());
+   last_time = std::chrono::high_resolution_clock::now();
 }
 
 
@@ -175,6 +172,16 @@ void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
 	Corners m_room_corners = room.transform_corners_to(robot_pose.inverse());
 
 	Match match = hungarian.match(m_corners, m_room_corners);
+
+	float max_match_error = 99999.f;
+
+	if (!match.empty())
+	{
+       const auto max_error_iter = std::ranges::max_element(match, [](const auto &a, const auto &b)
+           { return std::get<2>(a) < std::get<2>(b); });
+       max_match_error = static_cast<float>(std::get<2>(*max_error_iter));
+       time_series_plotter->addDataPoint(match_error_graph,max_match_error);
+	}
 
 	Eigen::MatrixXd W(m_corners.size() * 2, 3);
 	Eigen::VectorXd b(m_corners.size() * 2);
@@ -205,12 +212,16 @@ void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
 	robot_room_draw->setPos(robot_pose.translation().x(), robot_pose.translation().y());
 	double angle = std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0));
 	robot_room_draw->setRotation(angle * 180 / M_PI);
+	lcdNumber_angle->display(angle);
 }
 
 void SpecificWorker::set_speeds(std::tuple<State, float, float> general_state)
 {
 	try {
 		omnirobot_proxy->setSpeedBase(0,std::get<1>(general_state),std::get<2>(general_state));
+		lcdNumber_adv->display(std::get<1>(general_state));
+		lcdNumber_rot->display(std::get<2>(general_state));
+
 	}
 	catch(const Ice::Exception &e) {
 		std::cout << e << " Conexión con Laser\n";
