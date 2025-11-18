@@ -90,7 +90,7 @@ void SpecificWorker::initialize()
 		auto [rr, re] = viewer_room->add_robot(params.ROBOT_WIDTH, params.ROBOT_LENGTH, 0, 100, QColor("Blue"));
 		robot_room_draw = rr;
 		// draw room in viewer_room
-		viewer_room->scene.addRect(nominal_rooms[0].GRID_MAX_DIM, QPen(Qt::black, 30));
+		viewer_room->scene.addRect(nominal_rooms[0].rect(), QPen(Qt::black, 30));
 		//viewer_room->show();
 		show();
 
@@ -105,7 +105,7 @@ void SpecificWorker::initialize()
 		plotConfig.title = "Maximum Match Error Over Time";
 		plotConfig.yAxisLabel = "Error (mm)";
 		plotConfig.timeWindowSeconds = 15.0; // Show a 15-second window
-		plotConfig.autoScaleY = false;       // We will set a fixed range
+		plotConfig.autoScaleY = true;       // We will set a fixed range
 		plotConfig.yMin = 0;
 		plotConfig.yMax = 1000;
 		time_series_plotter = std::make_unique<TimeSeriesPlotter>(frame_plot_error, plotConfig);
@@ -155,12 +155,16 @@ void SpecificWorker::compute()
    const double angle = qRadiansToDegrees(std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0)));
    robot_room_draw->setRotation(angle);
 
+	auto [corners, lines] = room_detector.compute_corners(data, &viewer->scene);
+
+	static State state = State::GOTO_ROOM_CENTER;
+
+	set_speeds(state_machine_navigator(data, state, corners, lines));
 
    // update GUI
    time_series_plotter->update();
    lcdNumber_x->display(robot_pose.translation().x());
    lcdNumber_y->display(robot_pose.translation().y());
-   last_time = std::chrono::high_resolution_clock::now();
 }
 
 
@@ -169,9 +173,9 @@ void SpecificWorker::compute()
 void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
 {
 	const auto &[m_corners, lines] = room_detector.compute_corners(filter_data, &viewer->scene);
-	Corners m_room_corners = room.transform_corners_to(robot_pose.inverse());
+	Corners m_room_corners = nominal_rooms[1].transform_corners_to(robot_pose.inverse());
 
-	Match match = hungarian.match(m_corners, m_room_corners);
+	Match match = hungarian.match(m_corners, m_room_corners, 2000);
 
 	float max_match_error = 99999.f;
 
@@ -180,7 +184,7 @@ void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
        const auto max_error_iter = std::ranges::max_element(match, [](const auto &a, const auto &b)
            { return std::get<2>(a) < std::get<2>(b); });
        max_match_error = static_cast<float>(std::get<2>(*max_error_iter));
-       time_series_plotter->addDataPoint(match_error_graph,max_match_error);
+       time_series_plotter->addDataPoint(0,max_match_error);
 	}
 
 	Eigen::MatrixXd W(m_corners.size() * 2, 3);
@@ -269,15 +273,20 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 
 SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points, Corners corners, Lines lines)
 {
-	auto centro = room_detector.estimate_center_from_walls(lines)->norm();
+	float k = 0.5f;
+	auto centro = room_detector.estimate_center_from_walls(lines);
+	static QGraphicsEllipseItem *item = nullptr;
+	if (item != nullptr) delete item;
+	item = viewer->scene.addEllipse(-100, 100, 200, 200, QPen(Qt::red, 3), QBrush(Qt::red, Qt::SolidPattern));
+	item->setPos(centro->x(), centro->y());
 
-	// auto angulo_robot = points[points.size() / 2].phi;
-	// robot_pose.
-	//
-	// if ( std::abs(angulo_robot - centro) < 0.05 )
-	// {
-	//
-	// }
+	auto angulo = atan2(centro->x(), centro->y());
+
+	float vrot = k * angulo;
+
+	qInfo() << " Angulo centro: " << angulo;
+
+	return {State::GOTO_ROOM_CENTER, 0.0, vrot};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)

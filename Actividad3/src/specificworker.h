@@ -83,36 +83,6 @@ class SpecificWorker final : public GenericWorker
     float spir_rot = 0.6;
     float spir_speed = 1000.0;
 
-    struct NominalRoom
-    {
-        float width; //  mm
-        float length;
-        Corners corners;
-
-        QRectF GRID_MAX_DIM{-5000, -2500, 10000, 5000};
-        float ROBOT_WIDTH = 400;
-        float ROBOT_LENGTH = 400;
-
-        explicit NominalRoom(const float width_=10000.f, const float length_=5000.f, Corners  corners_ = {}) : width(width_), length(length_), corners(std::move(corners_)){};
-        Corners transform_corners_to(const Eigen::Affine2d &transform) const  // for room to robot pass the inverse of robot_pose
-        {
-            Corners transformed_corners;
-            for(const auto &[p, _, __] : corners)
-            {
-                auto ep = Eigen::Vector2d{p.x(), p.y()};
-                Eigen::Vector2d tp = transform * ep;
-                transformed_corners.emplace_back(QPointF{static_cast<float>(tp.x()), static_cast<float>(tp.y())}, 0.f, 0.f);
-            }
-            return transformed_corners;
-        }
-    };
-    NominalRoom room{10000.f, 5000.f,
-                {{QPointF{-5000.f, -2500.f}, 0.f, 0.f},
-                       {QPointF{5000.f, -2500.f}, 0.f, 0.f},
-                       {QPointF{5000.f, 2500.f}, 0.f, 0.f},
-                       {QPointF{-5000.f, 2500.f}, 0.f, 0.f}}
-    };
-
 
     QRectF dimensions;
     const int ROBOT_LENGTH = 400;
