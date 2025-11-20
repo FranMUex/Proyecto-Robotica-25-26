@@ -287,7 +287,7 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	auto centro = room_detector.estimate_center_from_walls(lines);
 
 	if (!centro)
-		return {State::GOTO_ROOM_CENTER, 1.0, 0.0};
+		return {State::GOTO_ROOM_CENTER, 0.0, 0.0};
 
 	static QGraphicsEllipseItem *item = nullptr;
 	if (item != nullptr) delete item;
@@ -299,12 +299,13 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 
 	float dist = centro.value().norm();
 	if (dist < 100) return {State::TURN, 0.0, 0.0};
-
+	if (angulo < 0.01) return {State::GOTO_ROOM_CENTER, 1000.0, 0.0};
+	//
 	float vrot = k * angulo;
-	float brake = exp(-angulo * angulo / M_PI/3);
-	float adv = 1000.0 * brake;
+	// float brake = exp(-angulo * angulo / M_PI/3);
+	// float adv = 1000.0 * brake;
 
-	return {State::GOTO_ROOM_CENTER, adv, vrot};
+	return {State::GOTO_ROOM_CENTER, 0.0, vrot};
 }
 
 SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos)
@@ -318,7 +319,8 @@ SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& p
 		localised = true;
 		return {State::IDLE, 0.0, 0.0};
 	}
-	return {State::TURN, 0.0, 0.3 * spin};
+	//return {State::TURN, 0.0, 0.3 * spin};
+	return {State::TURN, 0.0, 1.0};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
