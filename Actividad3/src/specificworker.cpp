@@ -463,27 +463,6 @@ void SpecificWorker::draw_lidar(const auto &points, QGraphicsScene* scene)
 	}
 }
 
-void draw_lidar(const auto &points,std::optional<Eigen::Vector2d> center_opt, QGraphicsScene* scene)
-{
-	static std::vector<QGraphicsItem*> draw_points;
-	for (const auto &p : draw_points)
-	{
-		scene->removeItem(p);
-		delete p;
-	}
-	draw_points.clear();
-
-	const QColor color("LightGreen");
-	const QPen pen(color, 10);
-	//const QBrush brush(color, Qt::SolidPattern);
-	for (const auto &p : points)
-	{
-		const auto dp = scene->addRect(-25, -25, 50, 50, pen);
-		dp->setPos(p.x, p.y);
-		draw_points.push_back(dp);   // add to the list of points to be deleted next time
-	}
-}
-
 void SpecificWorker::emergency()
 {
     std::cout << "Emergency worker" << std::endl;

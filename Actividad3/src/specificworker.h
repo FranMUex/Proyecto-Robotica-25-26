@@ -209,8 +209,8 @@ class SpecificWorker final : public GenericWorker
         std::tuple<float, float> robot_controller(const Eigen::Vector2f &target);
 
     RoboCompLidar3D::TPoints get_filtered_lidar_data();
+
     void draw_lidar(const auto &points, QGraphicsScene* scene);
-    void draw_lidar(const auto &points,std::optional<Eigen::Vector2d> center_opt, QGraphicsScene* scene);
 
     RoboCompLidar3D::TPoints filter_min_distance(RoboCompLidar3D::TPoints points);
 
