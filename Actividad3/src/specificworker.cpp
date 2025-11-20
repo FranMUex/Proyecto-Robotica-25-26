@@ -267,6 +267,11 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 {
 	switch (state)
 	{
+	case State::IDLE:
+		qInfo() << "IDLE";
+		//pingo
+		exit(0);
+		break;
 	case State::GOTO_ROOM_CENTER:
 		qInfo() << "GOTO_ROOM_CENTER";
 		return goto_room_center(filter_data, corners, lines);
@@ -275,9 +280,10 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 		qInfo() << "TURN";
 		return turn_to_color(filter_data);
 		break;
-	case State::IDLE:
-		qInfo() << "IDLE";
-		exit(0);
+	case State::GOTO_DOOR:
+		qInfo() << "GOTO_DOOR";
+		//pingo
+		return goto_door(filter_data);
 		break;
 	}
 }
@@ -287,7 +293,7 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	auto centro = room_detector.estimate_center_from_walls(lines);
 
 	if (!centro)
-		return {State::GOTO_ROOM_CENTER, 0.0, 0.0};
+		return {State::GOTO_ROOM_CENTER, 1.0, 0.0};
 
 	static QGraphicsEllipseItem *item = nullptr;
 	if (item != nullptr) delete item;
@@ -298,14 +304,14 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	auto angulo = atan2(centro->x(), centro->y());
 
 	float dist = centro.value().norm();
-	if (dist < 100) return {State::TURN, 0.0, 0.0};
-	if (angulo < 0.01) return {State::GOTO_ROOM_CENTER, 1000.0, 0.0};
-	//
-	float vrot = k * angulo;
-	// float brake = exp(-angulo * angulo / M_PI/3);
-	// float adv = 1000.0 * brake;
+	if (dist < 300) return {State::TURN, 0.0, 0.0};
 
-	return {State::GOTO_ROOM_CENTER, 0.0, vrot};
+	float vrot = k * angulo;
+	float brake = exp(-angulo * angulo / (M_PI/10));
+	qInfo() << "Brake: " << brake;
+	float adv = 1000.0 * brake;
+
+	return {State::GOTO_ROOM_CENTER, adv, vrot};
 }
 
 SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos)
@@ -319,8 +325,7 @@ SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& p
 		localised = true;
 		return {State::IDLE, 0.0, 0.0};
 	}
-	//return {State::TURN, 0.0, 0.3 * spin};
-	return {State::TURN, 0.0, 1.0};
+	return {State::GOTO_DOOR, 0.0, 0.3 * spin};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
