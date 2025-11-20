@@ -150,6 +150,7 @@ void SpecificWorker::compute()
 	localise(data);
 
 
+	//TODO
 	//if (localised) update_pose()
 
 	auto [corners, lines] = room_detector.compute_corners(data, &viewer->scene);
@@ -323,9 +324,14 @@ SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& p
 	if (success)
 	{
 		localised = true;
-		return {State::IDLE, 0.0, 0.0};
+		return {State::GOTO_DOOR, 0.0, 0.0};
 	}
-	return {State::GOTO_DOOR, 0.0, 0.3 * spin};
+	return {State::TURN, 0.0, 0.3 * spin};
+}
+
+SpecificWorker::RetVal SpecificWorker::goto_door(RoboCompLidar3D::TPoints& puntos)
+{
+	return {State::GOTO_DOOR, 0.0, 0.0};
 }
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)

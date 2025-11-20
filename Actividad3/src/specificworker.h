@@ -205,6 +205,7 @@ class SpecificWorker final : public GenericWorker
         void move_robot(float adv, float rot, float max_match_error);
         Eigen::Vector3d solve_pose(const Corners &corners, const Match &match);
         void predict_robot_pose();
+        //TODO
         std::tuple<float, float> robot_controller(const Eigen::Vector2f &target);
 
     RoboCompLidar3D::TPoints get_filtered_lidar_data();
@@ -219,6 +220,7 @@ class SpecificWorker final : public GenericWorker
     RetVal state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines);
     RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos);
     RetVal goto_room_center(const RoboCompLidar3D::TPoints& points, Corners corners, Lines lines);
+    RetVal goto_door(RoboCompLidar3D::TPoints& puntos);
 
 
     RetVal fwd(RoboCompLidar3D::TPoints puntos);
