@@ -282,11 +282,25 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 	}
 }
 
+std::tuple<float, float> SpecificWorker::robot_controller(const Eigen::Vector2d& target)
+{
+	float dist = target.norm();
+	if (dist < 100)
+	{
+		return {0.0, 0.0};
+	}
+
+	vrot = k * angulo;
+	float brake = exp(-angulo * angulo / M_PI/6);
+	adv = 1000.0 * brake;
+	return {false};
+}
+
 SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points, Corners corners, Lines lines)
 {
 	auto centro = room_detector.estimate_center_from_walls(lines);
 
-	if (!centro)
+	if (not centro.has_value())
 		return {State::GOTO_ROOM_CENTER, 1.0, 0.0};
 
 	static QGraphicsEllipseItem *item = nullptr;
@@ -297,12 +311,11 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	float k = 0.5f;
 	auto angulo = atan2(centro->x(), centro->y());
 
-	float dist = centro.value().norm();
-	if (dist < 100) return {State::TURN, 0.0, 0.0};
 
-	float vrot = k * angulo;
-	float brake = exp(-angulo * angulo / M_PI/3);
-	float adv = 1000.0 * brake;
+	float vrot;
+	float adv;
+	SpecificWorker::RetVal value1;
+	if (robot_controller(centro)) return value1;
 
 	return {State::GOTO_ROOM_CENTER, adv, vrot};
 }
