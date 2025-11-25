@@ -22,19 +22,19 @@ if ! killall -0 Webots2Robocomp
 then
   cd ~/robocomp/components/webots-bridge/
 
-  gnome-terminal --tab --execute bash -c "bin/Webots2Robocomp etc/config ; bash"
+  gnome-terminal --tab --execute bash -c "bin/Webots2Robocomp etc/config"
 fi
 
 if ! killall -0 Lidar3D
 then
   cd ~/robocomp/components/robocomp-robolab/components/hardware/laser/lidar3D/
 
-  gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_helios_webots ; bash"
+  gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_helios_webots"
 fi
 
 if ! killall python_xbox_controller
 then
   cd ~/robocomp/components/robocomp-robolab/components/hardware/external_control/python_xbox_controller/
 
-  gnome-terminal --tab --execute bash -c "bin/python_xbox_controller etc/config ; bash"
+  gnome-terminal --tab --execute bash -c "bin/python_xbox_controller etc/config"
 fi

@@ -147,11 +147,8 @@ void SpecificWorker::compute()
    data = door_detector.filter_points(data, &viewer->scene);
 
    draw_lidar(data, &viewer->scene);
-	localise(data);
 
-
-	//TODO
-	//if (localised) update_pose()
+	if (localised) localise(data);
 
 	auto [corners, lines] = room_detector.compute_corners(data, &viewer->scene);
 
@@ -270,7 +267,6 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 	{
 	case State::IDLE:
 		qInfo() << "IDLE";
-		//pingo
 		exit(0);
 		break;
 	case State::GOTO_ROOM_CENTER:
@@ -283,7 +279,6 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 		break;
 	case State::GOTO_DOOR:
 		qInfo() << "GOTO_DOOR";
-		//pingo
 		return goto_door(filter_data);
 		break;
 	}
