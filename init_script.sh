@@ -9,19 +9,32 @@ if ! test -f robocomp; then
   sudo ln -s /home/usuario/software/pip_env/bin/robocompdsl
 fi
 
-webots &
-disown
 
-sleep 3
+if ! killall -0 webots
+then
+  webots &
+  disown
+  sleep 3
+fi
 
-cd ~/robocomp/components/webots-bridge/
 
-gnome-terminal --tab --execute bash -c "bin/Webots2Robocomp etc/config ; bash"
+if ! killall -0 Webots2Robocomp
+then
+  cd ~/robocomp/components/webots-bridge/
 
-cd ~/robocomp/components/robocomp-robolab/components/hardware/laser/lidar3D/
+  gnome-terminal --tab --execute bash -c "bin/Webots2Robocomp etc/config ; bash"
+fi
 
-gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_pearl_webots ; bash"
+if ! killall -0 Lidar3D
+then
+  cd ~/robocomp/components/robocomp-robolab/components/hardware/laser/lidar3D/
 
-cd ~/robocomp/components/robocomp-robolab/components/hardware/external_control/joystickpublish/
+  gnome-terminal --tab --execute bash -c "bin/Lidar3D etc/config_helios_webots ; bash"
+fi
 
-gnome-terminal --tab --execute bash -c "bin/JoystickPublish etc/config_shadow ; bash"
+if ! killall python_xbox_controller
+then
+  cd ~/robocomp/components/robocomp-robolab/components/hardware/external_control/python_xbox_controller/
+
+  gnome-terminal --tab --execute bash -c "bin/python_xbox_controller etc/config ; bash"
+fi

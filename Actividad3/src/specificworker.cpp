@@ -291,7 +291,7 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 
 SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points, Corners corners, Lines lines)
 {
-	auto centro = room_detector.estimate_center_from_walls(lines);
+	auto centro = center_estimator.estimate(points);
 
 	if (!centro)
 		return {State::GOTO_ROOM_CENTER, 1.0, 0.0};
@@ -329,7 +329,7 @@ SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& p
 	return {State::TURN, 0.0, 0.3 * spin};
 }
 
-SpecificWorker::RetVal SpecificWorker::goto_door(RoboCompLidar3D::TPoints& puntos)
+SpecificWorker::RetVal SpecificWorker::goto_door(const RoboCompLidar3D::TPoints& puntos)
 {
 	return {State::GOTO_DOOR, 0.0, 0.0};
 }

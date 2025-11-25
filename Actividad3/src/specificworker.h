@@ -50,6 +50,7 @@
 #include "nominal_room.h"
 #include "door_detector.h"
 #include "image_processor.h"
+#include "pointcloud_center_estimator.h"
 
 /**
  * \brief Class SpecificWorker implements the core functionality of the component.
@@ -158,7 +159,6 @@ class SpecificWorker final : public GenericWorker
         }
         State state_global = State::GOTO_ROOM_CENTER;
         using RetVal = std::tuple<State, float, float>;
-        RetVal goto_door(const RoboCompLidar3D::TPoints &points);
         RetVal orient_to_door(const RoboCompLidar3D::TPoints &points);
         RetVal cross_door(const RoboCompLidar3D::TPoints &points);
         RetVal localise(const Match &match);
@@ -196,6 +196,7 @@ class SpecificWorker final : public GenericWorker
 
         // timing
         std::chrono::time_point<std::chrono::high_resolution_clock> last_time = std::chrono::high_resolution_clock::now();
+        rc::PointcloudCenterEstimator center_estimator;
 
         // relocalization
         bool relocal_centered = false;
@@ -220,7 +221,7 @@ class SpecificWorker final : public GenericWorker
     RetVal state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines);
     RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos);
     RetVal goto_room_center(const RoboCompLidar3D::TPoints& points, Corners corners, Lines lines);
-    RetVal goto_door(RoboCompLidar3D::TPoints& puntos);
+    RetVal goto_door(const RoboCompLidar3D::TPoints& puntos);
 
 
     RetVal fwd(RoboCompLidar3D::TPoints puntos);
