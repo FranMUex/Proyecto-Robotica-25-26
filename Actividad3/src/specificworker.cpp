@@ -162,6 +162,8 @@ void SpecificWorker::compute()
 	const double angle = qRadiansToDegrees(std::atan2(robot_pose.rotation()(1, 0), robot_pose.rotation()(0, 0)));
 	robot_room_draw->setRotation(angle);
 
+
+
    // update GUI
    time_series_plotter->update();
    lcdNumber_x->display(robot_pose.translation().x());
@@ -263,28 +265,29 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine(Ro
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines)
 {
+	qInfo() << to_string(state);
+
 	switch (state)
 	{
 	case State::IDLE:
-		qInfo() << "IDLE";
 		exit(0);
 		break;
 	case State::GOTO_ROOM_CENTER:
-		qInfo() << "GOTO_ROOM_CENTER";
-		return goto_room_center(filter_data, corners, lines);
+		return goto_room_center(filter_data);
 		break;
 	case State::TURN:
-		qInfo() << "TURN";
-		return turn_to_color(filter_data);
+		return turn_to_color(filter_data, Qt::red);
 		break;
 	case State::GOTO_DOOR:
-		qInfo() << "GOTO_DOOR";
 		return goto_door(filter_data);
+		break;
+	case State::ORIENT_TO_DOOR:
+		return orient_to_door(filter_data);
 		break;
 	}
 }
 
-SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points, Corners corners, Lines lines)
+SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::TPoints &points)
 {
 	auto centro = center_estimator.estimate(points);
 
@@ -310,9 +313,9 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	return {State::GOTO_ROOM_CENTER, adv, vrot};
 }
 
-SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos)
+SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos, QColor color)
 {
-	auto const &[success, spin] = image_processor.check_colour_patch_in_image(this->camera360rgb_proxy, Qt::red);
+	auto const &[success, spin] = image_processor.check_colour_patch_in_image(this->camera360rgb_proxy, color);
 
 	qInfo() << " Es red: " << success;
 
@@ -326,8 +329,50 @@ SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& p
 
 SpecificWorker::RetVal SpecificWorker::goto_door(const RoboCompLidar3D::TPoints& puntos)
 {
-	return {State::GOTO_DOOR, 0.0, 0.0};
+	if (door_detector.doors().empty())
+		return {State::GOTO_DOOR, 0.0, 0.0};
+
+	Doors doors = door_detector.doors();
+	Door door = doors.front();
+
+	auto centro = door.center_before(Eigen::Vector2d(robot_pose.translation().x(), robot_pose.translation().y()));
+
+	float k = 0.5f;
+	auto angulo = atan2(centro.x(), centro.y());
+
+	float dist = centro.norm();
+	if (dist < 400) return {State::ORIENT_TO_DOOR, 0.0, 0.0};
+
+	float vrot = k * angulo;
+	float brake = exp(-angulo * angulo / (M_PI/10));
+	qInfo() << "Brake: " << brake;
+	float adv = 1000.0 * brake;
+
+	return {State::GOTO_DOOR, adv, vrot};
 }
+
+SpecificWorker::RetVal SpecificWorker::orient_to_door (const RoboCompLidar3D::TPoints& puntos)
+{
+	if (door_detector.doors().empty())
+		return {State::ORIENT_TO_DOOR, 0.0, 0.0};
+
+	Doors doors = door_detector.doors();
+	Door door = doors.front();
+
+	auto centro = door.center();
+
+	float k = 0.5f;
+	auto angulo = atan2(centro.x(), centro.y());
+
+	if (angulo < 0.01) return {State::GOTO_ROOM_CENTER, 1000.0, 0.0};
+	//
+	float vrot = k * angulo;
+	// float brake = exp(-angulo * angulo / M_PI/3);
+	// float adv = 1000.0 * brake;
+
+	return {State::ORIENT_TO_DOOR, 0.0, vrot};
+}
+
 
 std::tuple<SpecificWorker::State, float, float> SpecificWorker::fwd(RoboCompLidar3D::TPoints puntos)
 {

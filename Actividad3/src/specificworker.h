@@ -140,7 +140,7 @@ class SpecificWorker final : public GenericWorker
         // state machine
         enum class State
         {
-            GOTO_DOOR, ORIENT_TO_DOOR, LOCALISE, GOTO_ROOM_CENTER, TURN, IDLE, CROSS_DOOR,
+            GOTO_DOOR, ORIENT_TO_DOOR, ORIENT_TO_ROOM, LOCALISE, GOTO_ROOM_CENTER, TURN, IDLE, CROSS_DOOR,
             FORWARD, FOLLOW_WALL, SPIRAL
         };
 
@@ -152,6 +152,7 @@ class SpecificWorker final : public GenericWorker
                 case State::GOTO_DOOR:          return "GOTO_DOOR";
                 case State::TURN:               return "TURN";
                 case State::ORIENT_TO_DOOR:     return "ORIENT_TO_DOOR";
+                case State::ORIENT_TO_ROOM:     return "ORIENT_TO_ROOM";
                 case State::GOTO_ROOM_CENTER:   return "GOTO_ROOM_CENTER";
                 case State::CROSS_DOOR:         return "CROSS_DOOR";
                 default:                        return "UNKNOWN";
@@ -159,11 +160,9 @@ class SpecificWorker final : public GenericWorker
         }
         State state_global = State::GOTO_ROOM_CENTER;
         using RetVal = std::tuple<State, float, float>;
-        RetVal orient_to_door(const RoboCompLidar3D::TPoints &points);
         RetVal cross_door(const RoboCompLidar3D::TPoints &points);
         RetVal localise(const Match &match);
         RetVal update_pose(const Corners &corners, const Match &match);
-        RetVal turn(const Corners &corners);
         RetVal process_state(const RoboCompLidar3D::TPoints &data, const Corners &corners, const Match &match, AbstractGraphicViewer *viewer);
 
 
@@ -219,9 +218,10 @@ class SpecificWorker final : public GenericWorker
 
     RetVal state_machine(RoboCompLidar3D::TPoints puntos, State state);
     RetVal state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines);
-    RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos);
-    RetVal goto_room_center(const RoboCompLidar3D::TPoints& points, Corners corners, Lines lines);
+    RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos, QColor color = Qt::red);
+    RetVal goto_room_center(const RoboCompLidar3D::TPoints& points);
     RetVal goto_door(const RoboCompLidar3D::TPoints& puntos);
+    RetVal orient_to_door (const RoboCompLidar3D::TPoints& puntos);
 
 
     RetVal fwd(RoboCompLidar3D::TPoints puntos);
