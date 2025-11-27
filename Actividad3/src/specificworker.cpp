@@ -90,7 +90,7 @@ void SpecificWorker::initialize()
 		auto [rr, re] = viewer_room->add_robot(params.ROBOT_WIDTH, params.ROBOT_LENGTH, 0, 100, QColor("Blue"));
 		robot_room_draw = rr;
 		// draw room in viewer_room
-		viewer_room->scene.addRect(nominal_rooms[0].rect(), QPen(Qt::black, 30));
+		viewer_room->scene.addRect(nominal_rooms[habitacion].rect(), QPen(Qt::black, 30));
 		//viewer_room->show();
 		show();
 
@@ -176,7 +176,7 @@ void SpecificWorker::compute()
 void SpecificWorker::localise(RoboCompLidar3D::TPoints filter_data)
 {
 	const auto &[m_corners, lines] = room_detector.compute_corners(filter_data, &viewer->scene);
-	Corners m_room_corners = nominal_rooms[1].transform_corners_to(robot_pose.inverse());
+	Corners m_room_corners = nominal_rooms[habitacion].transform_corners_to(robot_pose.inverse());
 
 	Match match = hungarian.match(m_corners, m_room_corners, 2000);
 
@@ -269,14 +269,11 @@ std::tuple<SpecificWorker::State, float, float> SpecificWorker::state_machine_na
 
 	switch (state)
 	{
-	case State::IDLE:
-		exit(0);
-		break;
 	case State::GOTO_ROOM_CENTER:
 		return goto_room_center(filter_data);
 		break;
 	case State::TURN:
-		return turn_to_color(filter_data, Qt::red);
+		return turn_to_color(filter_data);
 		break;
 	case State::GOTO_DOOR:
 		return goto_door(filter_data);
@@ -294,10 +291,10 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	if (!centro)
 		return {State::GOTO_ROOM_CENTER, 1.0, 0.0};
 
-	static QGraphicsEllipseItem *item = nullptr;
-	if (item != nullptr) delete item;
-	item = viewer->scene.addEllipse(-100, 100, 200, 200, QPen(Qt::red, 3), QBrush(Qt::red, Qt::SolidPattern));
-	item->setPos(centro->x(), centro->y());
+	// static QGraphicsEllipseItem *item = nullptr;
+	// if (item != nullptr) delete item;
+	// item = viewer->scene.addEllipse(-100, 100, 200, 200, QPen(Qt::red, 3), QBrush(Qt::red, Qt::SolidPattern));
+	// item->setPos(centro->x(), centro->y());
 
 	float k = 0.5f;
 	auto angulo = atan2(centro->x(), centro->y());
@@ -313,9 +310,9 @@ SpecificWorker::RetVal SpecificWorker::goto_room_center(const RoboCompLidar3D::T
 	return {State::GOTO_ROOM_CENTER, adv, vrot};
 }
 
-SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos, QColor color)
+SpecificWorker::RetVal SpecificWorker::turn_to_color(RoboCompLidar3D::TPoints& puntos)
 {
-	auto const &[success, spin] = image_processor.check_colour_patch_in_image(this->camera360rgb_proxy, color);
+	auto const &[success, spin] = image_processor.check_colour_patch_in_image(this->camera360rgb_proxy, color_act);
 
 	qInfo() << " Es red: " << success;
 
@@ -364,7 +361,43 @@ SpecificWorker::RetVal SpecificWorker::orient_to_door (const RoboCompLidar3D::TP
 	float k = 0.5f;
 	auto angulo = atan2(centro.x(), centro.y());
 
-	if (angulo < 0.01) return {State::GOTO_ROOM_CENTER, 1000.0, 0.0};
+	if (angulo < 0.01)
+	{
+		auto start_time = std::chrono::steady_clock::now();
+
+		// 2. Define the duration: 2 seconds.
+		auto duration = std::chrono::seconds(2);
+
+		// 3. Define the end time.
+		auto end_time = start_time + duration;
+
+		// --- Loop Section ---
+		while (std::chrono::steady_clock::now() < end_time) {
+			// This is the code you want to repeat:
+			set_speeds(0, 1000.0, 0.0);
+
+			// OPTIONAL: Add a small delay (sleep) to prevent the loop from running
+			// too fast and consuming too much CPU. The duration of this delay
+			// depends on how quickly your device can accept new speed commands.
+			// For example, 10 milliseconds:
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+
+		if (habitacion == 0)
+		{
+			habitacion = 1;
+			color_act = "green";
+		}
+		else
+		{
+			habitacion = 0;
+			color_act = "red";
+		}
+
+		localised = false;
+
+		return {State::GOTO_ROOM_CENTER, 1000.0, 0.0};
+	}
 	//
 	float vrot = k * angulo;
 	// float brake = exp(-angulo * angulo / M_PI/3);

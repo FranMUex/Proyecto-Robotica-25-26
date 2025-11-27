@@ -134,6 +134,8 @@ class SpecificWorker final : public GenericWorker
 
         // rooms
         std::vector<NominalRoom> nominal_rooms{ NominalRoom{5500.f, 4000.f}, NominalRoom{8000.f, 4000.f}};
+        int habitacion = 0;
+        QColor color_act = "red";
         rc::Room_Detector room_detector;
         rc::Hungarian hungarian;
 
@@ -218,7 +220,7 @@ class SpecificWorker final : public GenericWorker
 
     RetVal state_machine(RoboCompLidar3D::TPoints puntos, State state);
     RetVal state_machine_navigator(RoboCompLidar3D::TPoints filter_data, State state, Corners corners, Lines lines);
-    RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos, QColor color = Qt::red);
+    RetVal turn_to_color(RoboCompLidar3D::TPoints& puntos);
     RetVal goto_room_center(const RoboCompLidar3D::TPoints& points);
     RetVal goto_door(const RoboCompLidar3D::TPoints& puntos);
     RetVal orient_to_door (const RoboCompLidar3D::TPoints& puntos);
